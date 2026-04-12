@@ -1,18 +1,18 @@
 /* === TOKENS === */
 :root {
-  --bg: #0f0e0c;
-  --surface: #1a1814;
-  --surface2: #232118;
-  --border: #2e2b24;
-  --gold: #c9a84c;
-  --gold-light: #e8c96a;
+  --bg: #0e0c14;
+  --surface: #131929;
+  --surface2: #1a2238;
+  --border: #252d45;
+  --gold: #9b7fd4;
+  --gold-light: #c4a8f0;
   --green: #4caf7d;
   --red: #e05c5c;
   --yellow: #e0b54c;
   --blue: #5c9be0;
-  --text: #f0ead8;
-  --text-muted: #8a8370;
-  --text-dim: #5a5545;
+  --text: #f0eeff;
+  --text-muted: #7a7a9a;
+  --text-dim: #3e3e5e;
   --radius: 12px;
   --radius-lg: 18px;
   --font-display: 'Playfair Display', serif;
@@ -98,7 +98,7 @@ html, body {
 }
 
 .nav-item.active {
-  background: rgba(201, 168, 76, 0.12);
+  background: rgba(155, 127, 212, 0.12);
   color: var(--gold-light);
   border-left: 2px solid var(--gold);
 }
@@ -115,7 +115,7 @@ html, body {
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 2px;
-  background: rgba(201,168,76,0.15);
+  background: rgba(155,127,212,0.15);
   color: var(--gold);
   padding: 3px 8px;
   border-radius: 4px;
@@ -384,7 +384,7 @@ textarea { resize: vertical; }
 .radio-option.selected,
 .radio-option:has(input:checked) {
   border-color: var(--gold);
-  background: rgba(201,168,76,0.08);
+  background: rgba(155,127,212,0.08);
   color: var(--gold-light);
 }
 
@@ -397,7 +397,7 @@ textarea { resize: vertical; }
 /* === BUTTONS === */
 .btn-primary {
   background: var(--gold);
-  color: #0f0e0c;
+  color: #f0eeff;
   font-family: var(--font-body);
   font-size: 14px;
   font-weight: 600;
@@ -445,20 +445,20 @@ textarea { resize: vertical; }
 .btn-ghost:hover { border-color: var(--text-muted); color: var(--text); }
 
 .btn-invite {
-  background: rgba(201,168,76,0.12);
+  background: rgba(155,127,212,0.12);
   color: var(--gold);
   font-family: var(--font-body);
   font-size: 13px;
   font-weight: 600;
   padding: 9px 18px;
-  border: 1px solid rgba(201,168,76,0.3);
+  border: 1px solid rgba(155,127,212,0.3);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .btn-invite:hover {
-  background: rgba(201,168,76,0.2);
+  background: rgba(155,127,212,0.2);
 }
 
 /* === MEMBERS === */
