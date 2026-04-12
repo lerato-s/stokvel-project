@@ -1,19 +1,29 @@
 import { useState } from 'react';
-import axiox from 'axios';
+import axios from 'axios';
 import './App.css';
 
 function Registration() {
     const [username , setUsername] = useState('');
     const [email , setEmail] = useState('');
     const [password , setPassword] = useState('');
-    const [role , setRole] = useState('');
+    const [role , setRole] = useState('member');
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        axios.post('http://localhost:5173/register',{username,email,password,role})
-        .then(result => console.log(result))
-        .catch(error => console.error("Error registering user:", error));
-    };
+   const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+        const result = await axios.post('http://localhost:3001/register', {
+            username,
+            email,
+            password,
+            role
+        });
+
+        console.log(result.data);
+    } catch (error) {
+        console.error("Error registering user:", error);
+    }
+};
 
     return(
         <section className="wrapper">
@@ -37,8 +47,8 @@ function Registration() {
                 </section>
                 <section>
                     <label htmlFor="role">👥</label>
-                    <select id="role" name="role" required>
-                        <option value="" disabled defaultValue>Select Role</option>
+                    <select id="role" name="role" required onChange={(e) => setRole(e.target.value)}>
+                        <option value="" disabled>Select Role</option>
                         <option value="admin">Admin</option>
                         <option value="member">Member</option>
                         <option value="treasurer">Treasurer</option>
