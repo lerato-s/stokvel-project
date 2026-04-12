@@ -2,7 +2,6 @@ import { useState } from 'react'
 import 'bootstrap/dist/css/bootstrap.min.css'
 import Registration from './Registration'
 import './App.css'
-import background from '/background.jpg'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 
 function App() {

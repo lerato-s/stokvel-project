@@ -8,9 +8,30 @@ function Registration() {
     const [email , setEmail] = useState('');
     const [password , setPassword] = useState('');
     const [role , setRole] = useState('member');
+    const [error, setError] = useState('');
+    const navigate = useNavigate();
+
 
    const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validate fields
+    if (!username) {
+        setError("Username is required");
+        return;
+    }
+    if (!email.includes("@")) {
+        setError("Enter a valid email");
+        return;
+    }
+    if (password.length < 6) {
+        setError("Password must be at least 6 characters");
+        return;
+    }
+    if (!role) {
+        setError("Please select a role");
+        return;
+    }
 
     try {
         const result = await axios.post('http://localhost:3001/register', {
@@ -24,7 +45,7 @@ function Registration() {
     } catch (error) {
         console.error("Error registering user:", error);
     }
-    Navigate('/login')
+    navigate('/login')
 };
 
     return(
@@ -34,7 +55,7 @@ function Registration() {
             </header>
             <form id="form" onSubmit={handleSubmit}>
                 <h1>Register</h1>
-                <p id="error-message"></p>
+                <p id="error-message">{error}</p>
                 <section>
                     <label htmlFor="username"><svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#1f1f1f"><path d="M367-527q-47-47-47-113t47-113q47-47 113-47t113 47q47 47 47 113t-47 113q-47 47-113 47t-113-47ZM160-160v-112q0-34 17.5-62.5T224-378q62-31 126-46.5T480-440q66 0 130 15.5T736-378q29 15 46.5 43.5T800-272v112H160Z"/></svg></label>
                     <input type="text" id="username" name="username" placeholder="Username" onChange={(e) => setUsername(e.target.value)}/>
