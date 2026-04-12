@@ -20,10 +20,10 @@ html{
 
 body{
     min-height: 100vh;
-    background-image: url('/background.jpg');
-    background-size: cover;
-    background-position: right;
     overflow: hidden;
+    background-color: var(--accent-color);
+    display: flex;
+    align-items: astretch;
     
 
 }
@@ -40,9 +40,11 @@ body{
     margin-left: 0;
     align-items:center;
     justify-content: center;
-    position: absolute;
+    position : absolute;
+    top : 0;
     left: 0;
-    top: 0;
+    
+    
 }
 
 header h1{

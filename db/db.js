@@ -9,7 +9,7 @@ async function connectDB() {
         const uri = process.env.MONGODB_URI;
         const client = new MongoClient(uri);
         await client.connect();
-        db = client.db('stokvel_db');
+        db = client.db('stokvelDB');
         console.log('Database connected successfully');
         return db;
     } catch (error) {
