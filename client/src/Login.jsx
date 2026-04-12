@@ -25,13 +25,17 @@ function Login() {
        //navigate("/home");
       navigate("/dashboard");
 
-    } catch (error) {
+    } 
+    catch (error) {
+
       console.error("Error logging in:", error);
       setErrorMessage("Invalid username or password");
+
     }
   };
 
   return (
+    
     <section className="wrapper">
       <header>
         <h1>Stokvel Management</h1>
