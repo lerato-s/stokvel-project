@@ -9,9 +9,10 @@
 </head>
 <body>
 
-  <!-- SIDEBAR -->
+<!-- sidebar and main content area for the stokvel group management dashboard -->
   <aside class="sidebar">
     <div class="sidebar-logo">
+      <!-- Placeholder logo using a diamond shape and text -->
       <span class="logo-icon">◈</span>
       <span class="logo-text">Stokvel</span>
     </div>
@@ -20,6 +21,7 @@
         <span class="nav-icon">⌂</span> Dashboard
       </a>
       <a href="#" class="nav-item" data-section="create-group">
+        <!-- here we use a star icon to represent the creation of a new group -->
         <span class="nav-icon">✦</span> Create Group
       </a>
       <a href="#" class="nav-item" data-section="members">
@@ -38,10 +40,9 @@
     </div>
   </aside>
 
-  <!-- MAIN -->
+ 
   <main class="main">
 
-    <!-- HEADER -->
     <header class="topbar">
       <div class="topbar-title" id="section-title">Dashboard</div>
       <div class="topbar-actions">
@@ -49,8 +50,9 @@
       </div>
     </header>
 
-    <!-- DASHBOARD SECTION -->
+    <!-- Dashboard section here  -->
     <section class="section active" id="section-dashboard">
+      <!-- we use stat cards to show important info about the group -->
       <div class="stats-row">
         <div class="stat-card">
           <div class="stat-label">Total Members</div>
@@ -69,20 +71,21 @@
           <div class="stat-value" id="stat-meeting">—</div>
         </div>
       </div>
-
+<!-- basically dashboard content -->
       <div class="dashboard-grid">
         <div class="card group-summary">
           <div class="card-header">
             <h2 id="dash-group-name">No Group Yet</h2>
             <span class="badge active" id="dash-group-status">Not Configured</span>
           </div>
+          <!-- strong here means the value is emphasized  -->
           <div class="group-detail"><span>Contribution</span><strong id="dash-contribution">—</strong></div>
           <div class="group-detail"><span>Meeting</span><strong id="dash-meeting">—</strong></div>
           <div class="group-detail"><span>Cycle</span><strong id="dash-cycle">—</strong></div>
           <div class="group-detail"><span>Payout Method</span><strong id="dash-payout-method">—</strong></div>
           <button class="btn-secondary" onclick="switchSection('create-group')">Configure Group</button>
         </div>
-
+<!-- cards are for grouping content -->
         <div class="card recent-activity">
           <h3 class="card-title">Recent Activity</h3>
           <ul class="activity-list" id="activity-list">
@@ -92,7 +95,7 @@
       </div>
     </section>
 
-    <!-- CREATE GROUP SECTION -->
+    <!-- this is the creating group section -->
     <section class="section" id="section-create-group">
       <div class="form-page">
         <div class="form-intro">
@@ -101,6 +104,7 @@
         </div>
         <form class="stokvel-form" onsubmit="handleSave(event)">
           <div class="form-grid">
+            <!-- field full means it spans the full width of the grid -->
             <div class="field full">
               <label>Group Name</label>
               <input type="text" id="cfg-name" placeholder="e.g. Mzansi Savers"/>
