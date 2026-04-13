@@ -89,7 +89,7 @@ function Login() {
         </section>
 
         <button type="submit">Sign In</button>
-        <a href="/forgot-password">Forgot Password?</a>
+        <a href="http://localhost:3000/forgot-password.html">Forgot Password?</a>
 
       </form>
 
