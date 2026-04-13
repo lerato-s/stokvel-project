@@ -9,6 +9,7 @@ require('dotenv').config();
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.static('frontend'));
 
 const PORT = 3000;
 const uri = process.env.MONGODB_URI;
@@ -57,7 +58,8 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     expiresAt.setHours(expiresAt.getHours() + 1); // expires in an hour
 
     await db.collection('passwordResets').insertOne({
-        email, token, expiresAt, createdAt: new Date()
+        email, token 
+        /*, expiresAt, createdAt: new Date()*/
     });
 
     const passwordLink = `http://localhost:3000/reset-password.html?token=${token}&email=${encodeURIComponent(email)}`;
@@ -86,7 +88,8 @@ app.post('/api/auth/reset-password', async (req, res) => {
 
     //filter collection, the {$gt : new Date()} means we filter by records where expiresAt is greater than NOW > $gt is the 'Greater than' operator in Mongo 
     const resetReq = await db.collection('passwordResets').findOne({
-        email : email, token : token, used : false, expiresAt: {$gt : new Date()}
+        email : email, token : token 
+        /*, used : false, expiresAt: {$gt : new Date()}*/
     });
 
     // cant be found means link is either invalid or expired
@@ -110,9 +113,6 @@ connectDB().then(() => {
         console.log(`Server running on http://localhost:${PORT}`);
     });
 }).catch(err => {
-    console/log('FATAL ERROR:', err);
+    console.log('FATAL ERROR:', err);
 
 });
-
-
-//});
