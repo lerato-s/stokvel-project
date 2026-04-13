@@ -116,7 +116,7 @@ form input:focus{
     border: 2px solid var(--text-color);
 }
 
-form button{
+form button {
     margin-top: 10px;
     border: none;
     border-radius: 1000px;
@@ -128,9 +128,17 @@ form button{
     text-transform: uppercase;
     cursor: pointer;
     transition: 150ms ease-in-out;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15); 
+        
+}
+form button:hover {
+    background-color: var(--text-color);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.2); 
 }
 
-form button:hover{
+form button:active {
+    transform: scale(0.95);          
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15); 
     background-color: var(--text-color);
 }
 
