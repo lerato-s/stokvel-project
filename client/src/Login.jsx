@@ -5,37 +5,54 @@ import { useNavigate } from "react-router-dom";
 import "./login.css";
 
 function Login() {
-  const [username, setUsername] = useState("");
+    const [email , setEmail] = useState('');
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    try {
-      const result = await axios.post("http://localhost:3001/login", {
-        username,
-        password,
-      });
+  try {
+    const result = await axios.post("http://localhost:3001/login", {
+      email,
+      password,
+    });
 
-      console.log(result.data);
+    console.log(result.data);
 
-      // Navigate to dashboard or home after successful login currently we dont have the pages but soon soon 
-       //navigate("/home");
-      navigate("/dashboard");
+    
+    const user = result.data;
+    
+    localStorage.setItem("user", JSON.stringify(user));
 
+    const role = user.role;
+
+    
+    if (role === "admin") {
+      navigate("/admin-dashboard");
     } 
-    catch (error) {
-
-      console.error("Error logging in:", error);
-      setErrorMessage("Invalid username or password");
-
+    else if (role === "member") {
+      navigate("/member-dashboard");
+    } 
+    else if (role === "treasurer") {
+      navigate("/treasurer-dashboard");
+    } 
+    else {
+      navigate("/dashboard");
     }
-  };
+
+  } 
+  catch (error) {
+
+    console.error("Error logging in:", error);
+    setErrorMessage("Invalid email or password");
+
+  }
+};
 
   return (
-    
+
     <section className="wrapper">
       <header>
         <h1>Stokvel Management</h1>
@@ -45,7 +62,7 @@ function Login() {
         {errorMessage && <p id="error-message">{errorMessage}</p>}
 
         <section>
-          <label htmlFor="username">
+          <label htmlFor="useremail">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               height="24px"
@@ -58,10 +75,10 @@ function Login() {
           </label>
           <input
             type="text"
-            id="username"
-            name="username"
-            placeholder="Username"
-            onChange={(e) => setUsername(e.target.value)}
+            id="useremail"
+            name="email"
+            placeholder="email"
+            onChange={(e) => setEmail(e.target.value)}
             required
           />
         </section>
@@ -89,7 +106,7 @@ function Login() {
         </section>
 
         <button type="submit">Sign In</button>
-        <a href="http://localhost:3000/forgot-password.html">Forgot Password?</a>
+        <a href="/forgot-password">Forgot Password?</a>
 
       </form>
 
