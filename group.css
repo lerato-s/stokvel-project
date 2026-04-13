@@ -1,4 +1,4 @@
-/* === TOKENS === */
+/* === What root does here is define CSS variables for consistent theming === */
 :root {
   --bg: #0e0c14;
   --surface: #131929;
@@ -19,6 +19,8 @@
   --font-body: 'DM Sans', sans-serif;
 }
 
+/* What box sizing does is include padding and border in the element's total width/height */
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
@@ -33,7 +35,7 @@ html, body {
   overflow-x: hidden;
 }
 
-/* === SIDEBAR === */
+/* === position being sticky means sidebar stays in place while scrolling === */
 .sidebar {
   width: 220px;
   min-height: 100vh;
@@ -77,7 +79,7 @@ html, body {
   padding: 0 12px;
   flex: 1;
 }
-
+/* what this does is style the navigation items in the sidebar */
 .nav-item {
   display: flex;
   align-items: center;
@@ -91,12 +93,12 @@ html, body {
   transition: all 0.2s;
   cursor: pointer;
 }
-
+/* this styles the hover state of the navigation items,the hover state is when the user hovers over the item */
 .nav-item:hover {
   background: var(--surface2);
   color: var(--text);
 }
-
+/* the active state is when the item is currently selected */
 .nav-item.active {
   background: rgba(155, 127, 212, 0.12);
   color: var(--gold-light);
@@ -170,6 +172,7 @@ html, body {
 
 .section.active { display: block; }
 
+/* What this does is create a fade-in animation for section transitions */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -183,7 +186,7 @@ html, body {
   margin-bottom: 28px;
   width: 100%;
 }
-
+/*this styles the stats cards,I spoke on it in the html file.It groups content */
 .stat-card {
   background: var(--surface);
   border: 1px solid var(--border);
