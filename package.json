@@ -17,10 +17,23 @@
     "dotenv": "^17.4.1",
     "express": "^5.2.1",
     "mongodb": "^7.1.1",
+<<<<<<< HEAD
     "yup": "^1.7.1"
+=======
+    "mongoose": "^9.4.1"
+>>>>>>> 8ec2c974b7ff7ca3198cdb21c4b174901ad6babc
   },
   "devDependencies": {
     "jest": "^30.3.0",
     "nodemon": "^3.1.14"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lerato-s/stokvel-project.git"
+  },
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/lerato-s/stokvel-project/issues"
+  },
+  "homepage": "https://github.com/lerato-s/stokvel-project#readme"
 }
