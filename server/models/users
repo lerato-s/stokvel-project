@@ -1,5 +1,5 @@
 const  mongoose = require('mongoose')
-const bcrypt = require('bcrypt') //Aphiwe addded this for password hashing
+const bcrypt = require('bcryptjs') //Aphiwe addded this for password hashing
 
 
 const UserSchema = new mongoose.Schema({
@@ -10,11 +10,12 @@ const UserSchema = new mongoose.Schema({
 })
 
 UserSchema.pre("save" , async function (next){ //hashing function in our database we will see the hashed password
-    if(!thid.isModified("password")) next();
+    if(!this.isModified("password"))return next();
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password,salt);
-    next();
-})
+    console.log("HASHING DONE"); // ✅ confirm hashing completes
+    
+});
 
 UserSchema.methods.matchPassword = async function(enteredPassword){ //Aphiwe checking if entered password matches the one in our database but the method is self explanatory Aphiwe
     return await bcrypt.compare(enteredPassword, this.password);

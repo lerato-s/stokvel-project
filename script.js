@@ -26,7 +26,7 @@ async function connectDB() {
 
 // Health check endpoint for everyone to use
 
-app.get('/api/health', (req, res) => {
+app.get('/login', (req, res) => {
     res.json({ status: 'ok', message: 'Server is running' });
 });
 
@@ -64,7 +64,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
        
     });
 
-    const passwordLink = `http://localhost:3000/reset-password.html?token=${token}&email=${encodeURIComponent(email)}`;
+    const passwordLink = `http://localhost:3001/reset-password.html?token=${token}&email=${encodeURIComponent(email)}`;
     console.log(`Reset link for ${email}: ${passwordLink}`);
 
     res.json({
@@ -77,7 +77,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 
 // reset password post
 
-app.post('/api/auth/reset-password', async (req, res) => {
+app.post('http://localhost:3001/reset-password.html?token=${token}&email=${encodeURIComponent(email)}', async (req, res) => {
     
     const email = req.body.email;
     const token = req.body.token;
@@ -90,12 +90,8 @@ app.post('/api/auth/reset-password', async (req, res) => {
 
     //filter collection, the {$gt : new Date()} means we filter by records where expiresAt is greater than NOW > $gt is the 'Greater than' operator in Mongo 
     const resetReq = await db.collection('passwordResets').findOne({
-<<<<<<< HEAD
-        email : email, token : token, used : false, expiresAt: {$gt : new Date()}
-=======
         email : email, token : token 
         /*, used : false, expiresAt: {$gt : new Date()}*/
->>>>>>> origin/feature/forgot-password
     });
 
     // cant be found means link is either invalid or expired
@@ -119,15 +115,6 @@ connectDB().then(() => {
         console.log(`Server running on http://localhost:${PORT}`);
     });
 }).catch(err => {
-<<<<<<< HEAD
-    console/log('FATAL ERROR:', err);
-
-});
-
-
-//});
-=======
     console.log('FATAL ERROR:', err);
 
 });
->>>>>>> origin/feature/forgot-password

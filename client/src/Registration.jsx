@@ -7,7 +7,7 @@ function Registration() {
     const [username , setUsername] = useState('');
     const [email , setEmail] = useState('');
     const [password , setPassword] = useState('');
-    const [role , setRole] = useState('member');
+    const [role , setRole] = useState('');
     const [error, setError] = useState('');
     const navigate = useNavigate();
 
@@ -42,10 +42,12 @@ function Registration() {
         });
 
         console.log(result.data);
+        navigate('/login')
     } catch (error) {
         console.error("Error registering user:", error);
+        setError("Registration failed: " + (error.response?.data?.error || error.message));
     }
-    navigate('/login')
+    
 };
 
     return(
