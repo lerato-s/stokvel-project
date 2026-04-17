@@ -5,12 +5,14 @@ const bcrypt = require('bcryptjs') //Aphiwe addded this for password hashing
 const UserSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
-    role: { type: String, enum: ['admin', 'member', 'treasurer'], required: true }
-})
+    password: { type: String, required: true},
+    //role: { type: String, enum: ['admin', 'member', 'treasurer'], required: true },
+    resetToken: { type: String , default: null },
+    resetTokenExpiry: { type: Date, default: null }
+});
 
-UserSchema.pre("save" , async function (next){ //hashing function in our database we will see the hashed password
-    if(!this.isModified("password"))return next();
+UserSchema.pre("save" , async function (){ //hashing function in our database we will see the hashed password
+    if(!this.isModified("password"))return ;
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password,salt);
     console.log("HASHING DONE"); // ✅ confirm hashing completes
@@ -23,3 +25,4 @@ UserSchema.methods.matchPassword = async function(enteredPassword){ //Aphiwe che
 
 const UserModel = mongoose.model('Users', UserSchema)
 module.exports = UserModel
+

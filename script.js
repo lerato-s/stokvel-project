@@ -107,6 +107,36 @@ app.post('http://localhost:3001/reset-password.html?token=${token}&email=${encod
     res.json({message : "Password has been successfully reset! You can now login."});
 })
 
+app.post("/api/auth/reset-password", async (req, res) => {
+  try {
+    const { email, token, newPassword } = req.body;
+
+    const user = await UserModel.findOne({
+      email,
+      resetToken: token
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        error: "Invalid token"
+      });
+    }
+
+    user.password = newPassword;
+    user.resetToken = undefined;
+
+    await user.save();
+
+    res.json({
+      message: "Password reset successful"
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      error: "Server error"
+    });
+  }
+});
 
 
 connectDB().then(() => {
