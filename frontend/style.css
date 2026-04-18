@@ -188,3 +188,85 @@ form select:focus{
     outline: none;
     border: 2px solid var(--text-color);
 }
+
+/*fix for forgot/reset password pages -> make text fit*/
+
+/* allow more space for labels */
+form section {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 0;
+}
+
+/*make labels wider to fit text*/
+form label {
+    width: auto !important;
+    min-width: 120px;
+    padding: 0 15px;
+    font-size: 14px;
+    white-space: nowrap;
+    background-color: var(--accent-color);
+    border-radius: 10px 0 0 10px;
+}
+
+/*make inputs take remaining space */
+form input {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+}
+
+/*adjust container for better text display */
+.container {
+    max-width: 550px !important;
+    width: 90%;
+}
+
+/*on smaller screens, stack labels and inputs */
+@media (max-width: 600px) {
+    form section {
+        flex-direction: column;
+    }
+    
+    form label {
+        width: 100% !important;
+        border-radius: 10px 10px 0 0;
+        white-space: normal;
+        text-align: center;
+    }
+    
+    form input {
+        width: 100%;
+        border-radius: 0 0 10px 10px;
+    }
+}
+
+
+/*center the form for forgot/reset pages*/
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: auto;
+    position: relative;
+}
+
+/*Override the wrapper positioning */
+body .wrapper {
+    position: relative; /*unstick from left*/
+    margin: 0 auto;
+    border-radius: 60px;
+    width: 90%;
+    max-width: 500px;
+    height: auto;
+    min-height: 60vh;
+}
+
+/*remove the absolute positioning*/
+body:has(.forgot-page) .wrapper,
+body:has(.reset-page) .wrapper {
+    position: relative;
+    left: auto;
+    margin: 20px auto;
+}
