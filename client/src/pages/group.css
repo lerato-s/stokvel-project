@@ -31,7 +31,7 @@ html, body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
-  font-size: 15px;
+  font-size: 18px;
   overflow-x: hidden;
   /* ← removed display: flex from here */
 }
@@ -66,7 +66,7 @@ html, body {
 }
 
 .logo-icon {
-  font-size: 22px;
+  font-size: 30px;
   color: var(--gold);
 }
 
@@ -94,7 +94,7 @@ html, body {
   border-radius: 8px;
   color: var(--text-muted);
   text-decoration: none;
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 500;
   transition: all 0.2s;
   cursor: pointer;
@@ -111,7 +111,7 @@ html, body {
   border-left: 2px solid var(--gold);
 }
 
-.nav-icon { font-size: 16px; }
+.nav-icon { font-size: 20px; }
 
 .sidebar-footer {
   padding: 20px 24px 0;
@@ -158,7 +158,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 36px;
+  padding: 33.2px 40px;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
   position: sticky;
@@ -168,7 +168,7 @@ html, body {
 
 .topbar-title {
   font-family: var(--font-display);
-  font-size: 20px;
+  font-size: 25px;
   font-weight: 700;
   color: var(--text);
   letter-spacing: 0.3px;
@@ -177,7 +177,7 @@ html, body {
 /* === SECTIONS === */
 .section {
   display: none;
-  padding: 36px;
+  padding: 40px;
   flex: 1;
   width: 100%;
   box-sizing: border-box;
@@ -205,7 +205,7 @@ html, body {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 20px 22px;
+  padding: 40px 22px;
   transition: border-color 0.2s;
 }
 
