@@ -10,8 +10,10 @@ const UserModel = require("./models/users")
 const bcrypt = require("bcryptjs")
 const jwt = require("jsonwebtoken")
 const crypto = require("crypto")
+const groupRoutes = require("./groupRoutes")
 
 const app = express()
+
 app.use(express.json())
 app.use(cors({
   origin: process.env.CLIENT_URL,
@@ -19,7 +21,7 @@ app.use(cors({
   credentials: true
 }));
 
-
+app.use("/api", groupRoutes)
 // Connect to MongoDB
 // ✅ Correct
 mongoose.connect(process.env.MONGODB_URI)
@@ -208,7 +210,6 @@ app.post('/reset-password', async (req, res) => {
     });
   }
 });
-
 
 app.listen(process.env.PORT || 3001, () => {
     console.log("Server is running on port " + (process.env.PORT || 3001))

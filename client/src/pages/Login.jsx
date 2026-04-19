@@ -3,6 +3,8 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "../pages/Login.css";
 import LoginForm from "../components/LoginForm";
+import GroupForm from "../components/GroupForm";
+
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -33,8 +35,8 @@ function Login() {
       localStorage.setItem("user", JSON.stringify(user));
         
       if (result.data.message === "Successfully logged in"){
-        {
-           navigate("/g");
+        if (role === "member") {
+           navigate("/group");
         }
     }
 

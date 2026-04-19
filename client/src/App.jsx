@@ -2,9 +2,10 @@ import { useState } from 'react'
 import 'bootstrap/dist/css/bootstrap.min.css'
 import Registration from './pages/Registration'
 import Login from './pages/Login'
-import Group from './pages/group'
+import Group from './pages/Group2'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
+
 
 
 
@@ -21,7 +22,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/g" element={<Group />} />
+          <Route path="/group" element={<Group />} />
       </Routes>
     </BrowserRouter>
   )
