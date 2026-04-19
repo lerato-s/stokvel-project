@@ -24,6 +24,7 @@ app.use(cors({
 
 app.use("/api", groupRoutes)
 app.use("/api/payfast", payfastRoutes)
+
 // Connect to MongoDB
 // ✅ Correct
 mongoose.connect(process.env.MONGODB_URI)
@@ -212,6 +213,8 @@ app.post('/reset-password', async (req, res) => {
     });
   }
 });
+
+app.get("/api/health", (_req, res) => res.json({ status: "ok" }))
 
 app.listen(process.env.PORT || 3001, () => {
     console.log("Server is running on port " + (process.env.PORT || 3001))

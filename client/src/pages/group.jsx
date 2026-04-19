@@ -1,304 +1,247 @@
-import { useState, useRef, useCallback } from "react";
+// Group.jsx
+import { useState, useRef, useCallback, useEffect } from "react";
+import axios from "axios";
+import GroupForm from "../components/GroupForm";
 import "./group.css";
+
+
+const API = import.meta.env.VITE_API_URL;
+
+function authHeader() {
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  return user.token ? { Authorization: `Bearer ${user.token}` } : {};
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatDate(d) {
   if (!d) return "—";
-  const dt = new Date(d + "T00:00:00");
-  return dt.toLocaleDateString("en-ZA", { day: "2-digit", month: "short", year: "numeric" });
+  return new Date(d + "T00:00:00").toLocaleDateString("en-ZA", {
+    day: "2-digit", month: "short", year: "numeric",
+  });
 }
-
 function getInitials(name) {
   return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
 }
 
+function currentMonth() {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+}
+
+function formatMonth(m) {
+  if (!m) return "—"
+  const [year, month] = m.split("-")
+  return new Date(year, month - 1).toLocaleDateString("en-ZA", { month: "long", year: "numeric" })
+}
+
+function formatDateTime(d) {
+  if (!d) return "—"
+  return new Date(d).toLocaleDateString("en-ZA", {
+    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+  })
+}
+
 // ── Toast ─────────────────────────────────────────────────────────────────────
 function Toast({ message }) {
-  return <div className={`toast${message ? " show" : ""}`}>{message}</div>;
+  return (
+    <output role="status" aria-live="polite" className={`toast${message ? " show" : ""}`}>
+      {message}
+    </output>
+  );
 }
 
 // ── Modal ─────────────────────────────────────────────────────────────────────
 function Modal({ open, onClose, title, children, actions }) {
+  if (!open) return null;
   return (
     <div
-      className={`modal-overlay${open ? " open" : ""}`}
+      className="modal-overlay open"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="modal">
-        <button className="modal-close" onClick={onClose}>✕</button>
-        <h3>{title}</h3>
-        {children}
-        <div className="modal-actions">{actions}</div>
-      </div>
+      <article className="modal">
+        <header className="modal-header">
+          <h3 id="modal-title">{title}</h3>
+          <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
+        </header>
+        <div className="modal-body">{children}</div>
+        <footer className="modal-actions">{actions}</footer>
+      </article>
     </div>
   );
 }
 
-// ── Field wrapper ─────────────────────────────────────────────────────────────
-function Field({ label, children }) {
+function Field({ label, htmlFor, children }) {
   return (
     <div className="field">
-      <label>{label}</label>
+      <label htmlFor={htmlFor}>{label}</label>
       {children}
     </div>
   );
 }
 
-// ── Dashboard ─────────────────────────────────────────────────────────────────
-function Dashboard({ members, meetings, groupConfig, onConfigureGroup }) {
-  const amount = groupConfig.amount;
+// ── Groups list (home screen) ─────────────────────────────────────────────────
+function GroupsList({ groups, loading, onSelect, onNew }) {
+  return (
+    <section className="groups-list-page" aria-labelledby="groups-heading">
+      <header className="groups-list-header">
+        <h2 id="groups-heading">My Stokvels</h2>
+        <button className="btn-primary" onClick={onNew}>+ New Group</button>
+      </header>
+
+      {loading ? (
+        <p className="empty-state">Loading groups…</p>
+      ) : groups.length === 0 ? (
+        <div className="empty-groups">
+          <p>You haven't created any stokvels yet.</p>
+          <button className="btn-primary" onClick={onNew}>Create your first group</button>
+        </div>
+      ) : (
+        <ul className="groups-cards" aria-label="Your stokvel groups">
+          {groups.map((g) => (
+            <li key={g._id}>
+              <button className="group-card-btn" onClick={() => onSelect(g)}>
+                <div className="group-card-avatar">{getInitials(g.name)}</div>
+                <div className="group-card-info">
+                  <strong>{g.name}</strong>
+                  <span>{g.freq ? `R${g.amount} · ${g.freq}` : "Not fully configured"}</span>
+                </div>
+                <span className="group-card-arrow">›</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+// ── Dashboard (single group detail) ──────────────────────────────────────────
+function Dashboard({ group, members, meetings, onBack }) {
   const pool =
-    amount && members.length
-      ? `R ${(Number(amount) * members.length).toLocaleString()}`
+    group.amount && members.length
+      ? `R ${(Number(group.amount) * members.length).toLocaleString()}`
       : "—";
+
   const upcoming = meetings
     .filter((m) => m.status === "upcoming")
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-  return (
-    <>
-      <div className="stats-row">
-        <div className="stat-card">
-          <div className="stat-label">Total Members</div>
-          <div className="stat-value">{members.length}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Monthly Pool</div>
-          <div className="stat-value">{pool}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Next Payout</div>
-          <div className="stat-value">{members.length ? "Slot 1" : "—"}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Next Meeting</div>
-          <div className="stat-value">
-            {upcoming.length ? formatDate(upcoming[0].date) : "—"}
-          </div>
-        </div>
-      </div>
-
-      <div className="dashboard-grid">
-        <div className="card group-summary">
-          <div className="card-header">
-            <h2>{groupConfig.name || "No Group Yet"}</h2>
-            <span className={`badge${groupConfig.name ? " active" : ""}`}>
-              {groupConfig.name ? "Active" : "Not Configured"}
-            </span>
-          </div>
-          {[
-            ["Contribution", amount && groupConfig.freq ? `R${amount} / ${groupConfig.freq}` : "—"],
-            ["Meeting", groupConfig.meetWeek && groupConfig.meetDay ? `Every ${groupConfig.meetWeek} ${groupConfig.meetDay}` : "—"],
-            ["Cycle", groupConfig.cycle || "—"],
-            ["Payout Method", groupConfig.payoutMethod || "—"],
-          ].map(([label, val]) => (
-            <div className="group-detail" key={label}>
-              <span>{label}</span>
-              <strong>{val}</strong>
-            </div>
-          ))}
-          <button className="btn-secondary" onClick={onConfigureGroup}>
-            Configure Group
-          </button>
-        </div>
-
-        <div className="card recent-activity">
-          <h3 className="card-title">Recent Activity</h3>
-          <ActivityList members={members} meetings={meetings} />
-        </div>
-      </div>
-    </>
-  );
-}
-
-function ActivityList({ members, meetings }) {
-  const now = new Date().toLocaleDateString("en-ZA", { day: "2-digit", month: "short" });
-  const items = [
-    ...members.slice().reverse().slice(0, 4).map((m) => ({
-      color: "blue",
-      text: `${m.name} invited as ${m.role}`,
-    })),
-    ...meetings.slice().reverse().slice(0, 3).map((m) => ({
-      color: "blue",
-      text: `Meeting scheduled for ${formatDate(m.date)}`,
-    })),
+  const stats = [
+    { label: "Total Members", value: members.length },
+    { label: "Monthly Pool",  value: pool },
+    { label: "Next Payout",   value: members.length ? "Slot 1" : "—" },
+    { label: "Next Meeting",  value: upcoming.length ? formatDate(upcoming[0].date) : "—" },
   ];
 
-  if (!items.length) {
-    return (
-      <ul className="activity-list">
-        <li>
-          <span className="dot" style={{ background: "var(--text-dim)" }} />
-          <span style={{ color: "var(--text-dim)" }}>
-            No activity yet — invite members to get started.
-          </span>
-        </li>
-      </ul>
-    );
-  }
+  const details = [
+    ["Contribution",  group.amount && group.freq ? `R${group.amount} / ${group.freq}` : "—"],
+    ["Meeting",       group.meetWeek && group.meetDay ? `Every ${group.meetWeek} ${group.meetDay}` : "—"],
+    ["Cycle",         group.cycle || "—"],
+    ["Payout Method", group.payoutMethod || "—"],
+    ["Max Members",   group.max || "—"],
+  ];
+
+  const now = new Date().toLocaleDateString("en-ZA", { day: "2-digit", month: "short" });
+  const activity = [
+    ...members.slice().reverse().slice(0, 4).map((m) => `${m.name} invited as ${m.role}`),
+    ...meetings.slice().reverse().slice(0, 3).map((m) => `Meeting scheduled for ${formatDate(m.date)}`),
+  ];
 
   return (
-    <ul className="activity-list">
-      {items.map((it, i) => (
-        <li key={i}>
-          <span className={`dot ${it.color}`} />
-          {it.text} — {now}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-// ── Create Group ──────────────────────────────────────────────────────────────
-function CreateGroup({ groupConfig, onSave }) {
-  const [form, setForm] = useState({
-    name: "", amount: "", freq: "", cycle: "", max: "",
-    meetFreq: "", meetDay: "", meetWeek: "", payoutMethod: "", rules: "",
-    ...groupConfig,
-  });
-
-  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!form.name.trim()) return;
-    onSave(form);
-  };
-
-  const handleReset = () =>
-    setForm({
-      name: "", amount: "", freq: "", cycle: "", max: "",
-      meetFreq: "", meetDay: "", meetWeek: "", payoutMethod: "", rules: "",
-    });
-
-  return (
-    <div className="form-page">
-      <div className="form-intro">
-        <h2>Configure Your Stokvel</h2>
-        <p>Set up the rules of your group. These will be visible to all members.</p>
+    <>
+      <div className="section-header-bar">
+        <button className="btn-back" onClick={onBack}>← Back</button>
+        <h2>{group.name}</h2>
+        <span className="badge active">Active</span>
       </div>
-      <form className="stokvel-form" onSubmit={handleSubmit}>
-        <div className="form-grid">
-          <div className="field full">
-            <label>Group Name</label>
-            <input value={form.name} onChange={set("name")} placeholder="e.g. Mzansi Savers" />
-          </div>
-          <div className="field">
-            <label>Contribution Amount (ZAR)</label>
-            <input type="number" value={form.amount} onChange={set("amount")} placeholder="e.g. 500" min="1" />
-          </div>
-          <div className="field">
-            <label>Contribution Frequency</label>
-            <select value={form.freq} onChange={set("freq")}>
-              <option value="">— Select —</option>
-              {["Monthly", "Weekly", "Bi-weekly"].map((o) => <option key={o}>{o}</option>)}
-            </select>
-          </div>
-          <div className="field">
-            <label>Cycle Duration</label>
-            <select value={form.cycle} onChange={set("cycle")}>
-              <option value="">— Select —</option>
-              {["6 Months", "12 Months", "18 Months", "24 Months"].map((o) => <option key={o}>{o}</option>)}
-            </select>
-          </div>
-          <div className="field">
-            <label>Max Members</label>
-            <input type="number" value={form.max} onChange={set("max")} placeholder="e.g. 12" min="2" />
-          </div>
-          <div className="field">
-            <label>Meeting Frequency</label>
-            <select value={form.meetFreq} onChange={set("meetFreq")}>
-              <option value="">— Select —</option>
-              {["Weekly", "Monthly", "Quarterly"].map((o) => <option key={o}>{o}</option>)}
-            </select>
-          </div>
-          <div className="field">
-            <label>Meeting Day</label>
-            <select value={form.meetDay} onChange={set("meetDay")}>
-              <option value="">— Select —</option>
-              {["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].map((o) => <option key={o}>{o}</option>)}
-            </select>
-          </div>
-          <div className="field">
-            <label>Meeting Week of Month</label>
-            <select value={form.meetWeek} onChange={set("meetWeek")}>
-              <option value="">— Select —</option>
-              {["1st","2nd","3rd","4th","Last"].map((o) => <option key={o}>{o}</option>)}
-            </select>
-          </div>
-          <div className="field full">
-            <label>Payout Method</label>
-            <div className="radio-group">
-              {["Fixed Order (Roster)", "Lucky Draw", "Need-Based (Vote)"].map((v) => (
-                <label
-                  key={v}
-                  className={`radio-option${form.payoutMethod === v ? " selected" : ""}`}
-                >
-                  <input
-                    type="radio"
-                    name="payout"
-                    value={v}
-                    checked={form.payoutMethod === v}
-                    onChange={() => setForm((f) => ({ ...f, payoutMethod: v }))}
-                  />
-                  {v}
-                </label>
-              ))}
+
+      <ul className="stats-row" aria-label="Group statistics">
+        {stats.map(({ label, value }) => (
+          <li key={label} className="stat-card">
+            <span className="stat-label">{label}</span>
+            <strong className="stat-value">{value}</strong>
+          </li>
+        ))}
+      </ul>
+
+      <div className="dashboard-grid">
+        <article className="card group-summary">
+          <header className="card-header">
+            <h3>Group Details</h3>
+          </header>
+          <dl className="group-details">
+            {details.map(([label, val]) => (
+              <div className="group-detail" key={label}>
+                <dt>{label}</dt>
+                <dd>{val}</dd>
+              </div>
+            ))}
+          </dl>
+          {group.rules && (
+            <div className="group-rules">
+              <strong>Rules</strong>
+              <p>{group.rules}</p>
             </div>
-          </div>
-          <div className="field full">
-            <label>Group Rules / Notes</label>
-            <textarea
-              rows="3"
-              value={form.rules}
-              onChange={set("rules")}
-              placeholder="e.g. Late payments will incur a R50 penalty..."
-            />
-          </div>
-        </div>
-        <div className="form-actions">
-          <button type="submit" className="btn-primary">Save Configuration</button>
-          <button type="button" className="btn-ghost" onClick={handleReset}>Reset</button>
-        </div>
-      </form>
-    </div>
+          )}
+        </article>
+
+        <article className="card recent-activity">
+          <h3 className="card-title">Recent Activity</h3>
+          {activity.length === 0 ? (
+            <p style={{ color: "var(--text-dim)" }}>No activity yet.</p>
+          ) : (
+            <ul className="activity-list">
+              {activity.map((text, i) => (
+                <li key={i}>
+                  <span className="dot blue" aria-hidden="true" />
+                  {text} — <time>{now}</time>
+                </li>
+              ))}
+            </ul>
+          )}
+        </article>
+      </div>
+    </>
   );
 }
 
 // ── Members ───────────────────────────────────────────────────────────────────
 function Members({ members, onInvite }) {
   return (
-    <>
-      <div className="section-header-bar">
-        <h2>Members</h2>
+    <section aria-labelledby="members-heading">
+      <header className="section-header-bar">
+        <h2 id="members-heading">Members</h2>
         <button className="btn-invite" onClick={onInvite}>+ Invite New Member</button>
-      </div>
-      <div className="members-grid">
-        {members.length === 0 ? (
-          <p className="empty-state">No members yet. Invite someone to get started.</p>
-        ) : (
-          members.map((m, i) => (
-            <div className="member-card" key={i}>
+      </header>
+      {members.length === 0 ? (
+        <p className="empty-state">No members yet. Invite someone to get started.</p>
+      ) : (
+        <ul className="members-grid">
+          {members.map((m) => (
+            <li key={m._id} className="member-card">
               <div className={`member-avatar ${m.status}`}>{m.initials}</div>
               <div className="member-info">
                 <strong>{m.name}</strong>
                 <span className="member-role">{m.role}</span>
               </div>
               <span className={`status-badge ${m.status}`}>{m.status}</span>
-            </div>
-          ))
-        )}
-      </div>
-    </>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 
 // ── Payouts ───────────────────────────────────────────────────────────────────
-function Payouts({ members, groupConfig, onReorder }) {
+function Payouts({ members, group, onReorder }) {
   const dragRef = useRef(null);
   const pool =
-    groupConfig.amount && members.length
-      ? `R ${(Number(groupConfig.amount) * members.length).toLocaleString()}`
+    group?.amount && members.length
+      ? `R ${(Number(group.amount) * members.length).toLocaleString()}`
       : "—";
 
   const handleDragStart = (i) => { dragRef.current = i; };
@@ -312,18 +255,18 @@ function Payouts({ members, groupConfig, onReorder }) {
   };
 
   return (
-    <>
-      <div className="section-header-bar">
-        <h2>Payout Roster</h2>
+    <section aria-labelledby="payouts-heading">
+      <header className="section-header-bar">
+        <h2 id="payouts-heading">Payout Roster</h2>
         <span className="hint">Drag to reorder</span>
-      </div>
-      <div className="payout-list">
-        {members.length === 0 ? (
-          <p className="empty-state">No members added yet.</p>
-        ) : (
-          members.map((m, i) => (
-            <div
-              key={i}
+      </header>
+      {members.length === 0 ? (
+        <p className="empty-state">No members added yet.</p>
+      ) : (
+        <ol className="payout-list">
+          {members.map((m, i) => (
+            <li
+              key={m._id}
               className="payout-row"
               draggable
               onDragStart={() => handleDragStart(i)}
@@ -338,42 +281,41 @@ function Payouts({ members, groupConfig, onReorder }) {
               </div>
               <span className="payout-amount">{pool}</span>
               <span className="payout-status">Pending</span>
-              <span className="drag-handle">⠿</span>
-            </div>
-          ))
-        )}
-      </div>
-    </>
+              <span className="drag-handle" aria-hidden="true">⠿</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
   );
 }
 
 // ── Meetings ──────────────────────────────────────────────────────────────────
 function Meetings({ meetings, onAddMeeting }) {
   return (
-    <>
-      <div className="section-header-bar">
-        <h2>Meeting Schedule</h2>
+    <section aria-labelledby="meetings-heading">
+      <header className="section-header-bar">
+        <h2 id="meetings-heading">Meeting Schedule</h2>
         <button className="btn-invite" onClick={onAddMeeting}>+ Add Meeting</button>
-      </div>
+      </header>
       <div className="meetings-table-wrap">
         <table className="meetings-table">
+          <caption className="sr-only">Scheduled meetings</caption>
           <thead>
             <tr>
-              {["#", "Date", "Time", "Venue", "Status", "Notes"].map((h) => (
-                <th key={h}>{h}</th>
+              {["#","Date","Time","Venue","Status","Notes"].map((h) => (
+                <th key={h} scope="col">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {meetings.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="empty-state">No meetings scheduled yet.</td>
-              </tr>
+              <tr><td colSpan={6} className="empty-state">No meetings scheduled yet.</td></tr>
             ) : (
               meetings.map((m, i) => (
-                <tr key={i}>
+                <tr key={m._id}>
                   <td>{i + 1}</td>
-                  <td>{formatDate(m.date)}</td>
+                  <td><time dateTime={m.date}>{formatDate(m.date)}</time></td>
                   <td>{m.time || "—"}</td>
                   <td>{m.venue}</td>
                   <td><span className={`status-badge ${m.status}`}>{m.status}</span></td>
@@ -384,143 +326,597 @@ function Meetings({ meetings, onAddMeeting }) {
           </tbody>
         </table>
       </div>
-    </>
+    </section>
   );
 }
 
-// ── Root App ──────────────────────────────────────────────────────────────────
+function Contributions({ contributions, members, group, onPay, loading }) {
+  const month = currentMonth()
+
+  // Which members have paid this month
+  const paidMemberIds = new Set(
+    contributions
+      .filter((c) => c.month === month && c.status === "paid")
+      .map((c) => c.member?._id || c.member)
+  )
+
+  const totalExpected  = group.amount && members.length
+    ? Number(group.amount) * members.length : 0
+  const totalCollected = contributions
+    .filter((c) => c.month === month && c.status === "paid")
+    .reduce((sum, c) => sum + c.amount, 0)
+  const progress = totalExpected ? Math.round((totalCollected / totalExpected) * 100) : 0
+
+  return (
+    <section aria-labelledby="contributions-heading">
+      <header className="section-header-bar">
+        <h2 id="contributions-heading">Contributions</h2>
+        <span className="month-label">{formatMonth(month)}</span>
+      </header>
+
+      {/* Progress bar */}
+      <div className="contribution-summary card" style={{ marginBottom: 24 }}>
+        <div className="contrib-summary-row">
+          <div>
+            <div className="stat-label">Collected This Month</div>
+            <div className="stat-value" style={{ fontSize: 22 }}>
+              R {totalCollected.toLocaleString()}
+              <span style={{ fontSize: 13, color: "var(--text-muted)", fontFamily: "var(--font-body)", fontWeight: 400 }}>
+                {" "}/ R {totalExpected.toLocaleString()}
+              </span>
+            </div>
+          </div>
+          <div className="contrib-progress-wrap">
+            <div className="contrib-progress-bar">
+              <div
+                className="contrib-progress-fill"
+                style={{ width: `${progress}%` }}
+                role="progressbar"
+                aria-valuenow={progress}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              />
+            </div>
+            <span className="contrib-progress-label">{progress}% collected</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Member payment status list */}
+      {members.length === 0 ? (
+        <p className="empty-state">No members yet. Invite members first.</p>
+      ) : (
+        <ul className="contributions-list" aria-label="Member contribution status">
+          {members.map((m) => {
+            const hasPaid   = paidMemberIds.has(m._id)
+            const record    = contributions.find(
+              (c) => (c.member?._id || c.member) === m._id && c.month === month && c.status === "paid"
+            )
+            return (
+              <li key={m._id} className={`contribution-row${hasPaid ? " paid" : ""}`}>
+                <div className="payout-avatar">{m.initials}</div>
+                <div className="payout-name">
+                  <strong>{m.name}</strong>
+                  <span>{m.role}</span>
+                </div>
+
+                {hasPaid ? (
+                  <div className="contrib-paid-info">
+                    <span className="status-badge active">✓ Paid</span>
+                    <span className="contrib-ref">{record?.reference}</span>
+                    <span className="contrib-date">{formatDateTime(record?.paidAt)}</span>
+                  </div>
+                ) : (
+                  <div className="contrib-actions">
+                    <span className="status-badge pending">Unpaid</span>
+                    <button
+                      className="btn-pay"
+                      onClick={() => onPay(m)}
+                      disabled={loading}
+                    >
+                      Pay R{group.amount}
+                    </button>
+                  </div>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      )}
+
+      {/* Payment history */}
+      {contributions.length > 0 && (
+        <div style={{ marginTop: 32 }}>
+          <h3 className="card-title">Payment History</h3>
+          <div className="meetings-table-wrap">
+            <table className="meetings-table">
+              <caption className="sr-only">Contribution history</caption>
+              <thead>
+                <tr>
+                  {["Member","Month","Amount","Reference","Status","Date"].map((h) => (
+                    <th key={h} scope="col">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {contributions.map((c) => (
+                  <tr key={c._id}>
+                    <td>{c.member?.name || "—"}</td>
+                    <td>{formatMonth(c.month)}</td>
+                    <td style={{ color: "var(--green)", fontWeight: 600 }}>R{c.amount}</td>
+                    <td><code style={{ fontSize: 11, color: "var(--text-dim)" }}>{c.reference}</code></td>
+                    <td><span className={`status-badge ${c.status}`}>{c.status}</span></td>
+                    <td>{c.paidAt ? formatDateTime(c.paidAt) : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </section>
+  )
+} // End of Contributions section
+
+// ── Disbursements section (Treasurer) ─────────────────────────────────────────
+function Disbursements({ disbursements, members, group, contributions, onDisburse, onMarkPaid, loading }) {
+  const month = currentMonth()
+
+  const totalCollected = contributions
+    .filter((c) => c.month === month && c.status === "paid")
+    .reduce((sum, c) => sum + c.amount, 0)
+
+  const disbursedMemberIds = new Set(
+    disbursements.map((d) => d.member?._id || d.member)
+  )
+
+  return (
+    <section aria-labelledby="disbursements-heading">
+      <header className="section-header-bar">
+        <h2 id="disbursements-heading">Payout Disbursements</h2>
+        <span className="month-label">{formatMonth(month)}</span>
+      </header>
+
+      {/* Pool summary */}
+      <div className="card contribution-summary" style={{ marginBottom: 24 }}>
+        <div className="contrib-summary-row">
+          <div>
+            <div className="stat-label">Available Pool</div>
+            <div className="stat-value" style={{ fontSize: 22 }}>
+              R {totalCollected.toLocaleString()}
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
+              collected this month from {contributions.filter(c => c.month === month && c.status === "paid").length} members
+            </div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div className="stat-label">Payout Method</div>
+            <div style={{ color: "var(--gold-light)", fontSize: 14, fontWeight: 600, marginTop: 4 }}>
+              {group.payoutMethod || "Not set"}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Members — initiate payout */}
+      {members.length === 0 ? (
+        <p className="empty-state">No members yet.</p>
+      ) : (
+        <ul className="contributions-list" aria-label="Disbursement roster">
+          {members.map((m, i) => {
+            const disbursed = disbursedMemberIds.has(m._id)
+            const record    = disbursements.find((d) => (d.member?._id || d.member) === m._id)
+            return (
+              <li key={m._id} className={`contribution-row${disbursed ? " paid" : ""}`}>
+                <span className="payout-num">{String(i + 1).padStart(2, "0")}</span>
+                <div className="payout-avatar">{m.initials}</div>
+                <div className="payout-name">
+                  <strong>{m.name}</strong>
+                  <span>{m.role}</span>
+                </div>
+
+                {disbursed ? (
+                  <div className="contrib-paid-info">
+                    <span className={`status-badge ${record.status}`}>{record.status}</span>
+                    <span className="contrib-ref">R{record.amount?.toLocaleString()}</span>
+                    {record.status === "pending" && (
+                      <button
+                        className="btn-secondary"
+                        style={{ fontSize: 12, padding: "5px 12px" }}
+                        onClick={() => onMarkPaid(record._id)}
+                        disabled={loading}
+                      >
+                        Mark Paid
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="contrib-actions">
+                    <span className="status-badge pending">No Payout</span>
+                    <button
+                      className="btn-pay"
+                      onClick={() => onDisburse(m)}
+                      disabled={loading || totalCollected === 0}
+                    >
+                      Initiate Payout
+                    </button>
+                  </div>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      )}
+
+      {/* Disbursement history */}
+      {disbursements.length > 0 && (
+        <div style={{ marginTop: 32 }}>
+          <h3 className="card-title">Disbursement History</h3>
+          <div className="meetings-table-wrap">
+            <table className="meetings-table">
+              <caption className="sr-only">Disbursement history</caption>
+              <thead>
+                <tr>
+                  {["Member","Month","Amount","Reference","Status","Note"].map((h) => (
+                    <th key={h} scope="col">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {disbursements.map((d) => (
+                  <tr key={d._id}>
+                    <td>{d.member?.name || "—"}</td>
+                    <td>{formatMonth(d.month)}</td>
+                    <td style={{ color: "var(--gold-light)", fontWeight: 600 }}>R{d.amount?.toLocaleString()}</td>
+                    <td><code style={{ fontSize: 11, color: "var(--text-dim)" }}>{d.reference}</code></td>
+                    <td><span className={`status-badge ${d.status}`}>{d.status}</span></td>
+                    <td style={{ fontSize: 12 }}>{d.note || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </section>
+  )
+} // End of Disbursements section
+
+// ── Nav ───────────────────────────────────────────────────────────────────────
+const NAV_ITEMS = [
+  { id: "groups",    icon: "⌂", label: "My Groups" },
+  { id: "members",   icon: "⬡", label: "Members" },
+  { id: "payouts",   icon: "◎", label: "Payout Order" },
+  { id: "meetings",  icon: "◷", label: "Meetings" },
+  { id: "contributions", icon: "₴", label: "Contributions" },
+  { id: "disbursements", icon: "◈", label: "Disbursements" },
+
+];
+
+// ── Root ──────────────────────────────────────────────────────────────────────
 export default function Group() {
-  const [activeSection, setActiveSection] = useState("dashboard");
-  const [members, setMembers] = useState([]);
-  const [meetings, setMeetings] = useState([]);
-  const [groupConfig, setGroupConfig] = useState({});
-  const [toast, setToast] = useState("");
-  const [inviteModal, setInviteModal] = useState(false);
-  const [meetingModal, setMeetingModal] = useState(false);
+  const [activeSection,  setActiveSection]  = useState("groups");
+  const [groups,         setGroups]         = useState([]);
+  const [selectedGroup,  setSelectedGroup]  = useState(null);
+  const [members,        setMembers]        = useState([]);
+  const [meetings,       setMeetings]       = useState([]);
+  const [loadingGroups,  setLoadingGroups]  = useState(true);
+  const [showGroupForm,  setShowGroupForm]  = useState(false);
+  const [toast,          setToast]          = useState("");
+  const [inviteModal,    setInviteModal]    = useState(false);
+  const [meetingModal,   setMeetingModal]   = useState(false);
 
-  const [inviteName, setInviteName] = useState("");
+  const [inviteName,    setInviteName]    = useState("");
   const [inviteContact, setInviteContact] = useState("");
-
-  const [meetDate, setMeetDate] = useState("");
-  const [meetTime, setMeetTime] = useState("");
-  const [meetVenue, setMeetVenue] = useState("");
-  const [meetNotes, setMeetNotes] = useState("");
+  const [meetDate,      setMeetDate]      = useState("");
+  const [meetTime,      setMeetTime]      = useState("");
+  const [meetVenue,     setMeetVenue]     = useState("");
+  const [meetNotes,     setMeetNotes]     = useState("");
+  const [contributions,  setContributions]  = useState([])
+  const [disbursements,  setDisbursements]  = useState([])
+  const [payLoading,     setPayLoading]     = useState(false)
 
   const showToast = useCallback((msg) => {
     setToast(msg);
     setTimeout(() => setToast(""), 3000);
   }, []);
 
-  const navItems = [
-    { id: "dashboard",    icon: "⌂", label: "Dashboard" },
-    { id: "create-group", icon: "✦", label: "Create Group" },
-    { id: "members",      icon: "⬡", label: "Members" },
-    { id: "payouts",      icon: "◎", label: "Payout Order" },
-    { id: "meetings",     icon: "◷", label: "Meetings" },
-  ];
+  // Load all groups on mount
+  useEffect(() => {
+    axios.get(`${API}/api/groups`, { headers: authHeader() })
+      .then((r) => setGroups(r.data))
+      .catch(() => showToast("Failed to load groups"))
+      .finally(() => setLoadingGroups(false));
+  }, []);
 
-  const sectionTitle = navItems.find((n) => n.id === activeSection)?.label || "";
+  // Load members + meetings when a group is selected
+  useEffect(() => {
+    if (!selectedGroup) return;
+    const h = { headers: authHeader() };
+    Promise.all([
+      axios.get(`${API}/api/members?groupId=${selectedGroup._id}`, h),
+      axios.get(`${API}/api/meetings?groupId=${selectedGroup._id}`, h),
+      axios.get(`${API}/api/payfast/contributions?groupId=${selectedGroup._id}`, h),
+      axios.get(`${API}/api/payfast/disbursements?groupId=${selectedGroup._id}`, h),
+    ])
+      .then(([mRes, mtRes, cRes, dRes]) => {
+        setMembers(mRes.data);
+        setMeetings(mtRes.data);
+        setContributions(cRes.data);
+        setDisbursements(dRes.data);
+      })
+      .catch(() => showToast("Failed to load group data"));
+  }, [selectedGroup]);
 
-  const sendInvite = () => {
-    if (!inviteName.trim() || !inviteContact.trim()) {
-      showToast("Please fill in all fields");
-      return;
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const payment = params.get("payment")
+    const ref     = params.get("ref")
+    if (payment === "success") {
+      showToast(`✓ Payment successful! Ref: ${ref}`)
+      if (selectedGroup) {
+        axios.get(`${API}/api/payfast/contributions?groupId=${selectedGroup._id}`, { headers: authHeader() })
+          .then((r) => setContributions(r.data))
+      }
+      window.history.replaceState({}, "", window.location.pathname)
+    } else if (payment === "cancelled") {
+      showToast("Payment was cancelled")
+      window.history.replaceState({}, "", window.location.pathname)
     }
-    setMembers((prev) => [
-      ...prev,
-      { name: inviteName.trim(), role: "Member", status: "pending", initials: getInitials(inviteName) },
-    ]);
-    setInviteName("");
-    setInviteContact("");
-    setInviteModal(false);
-    showToast(`✓ Invite sent to ${inviteName.trim()}`);
-  };
+  }, [selectedGroup])
 
-  const addMeeting = () => {
-    if (!meetDate || !meetVenue.trim()) {
-      showToast("Please add date and venue");
-      return;
-    }
-    setMeetings((prev) =>
-      [...prev, { date: meetDate, time: meetTime, venue: meetVenue.trim(), status: "upcoming", notes: meetNotes.trim() }]
-        .sort((a, b) => new Date(a.date) - new Date(b.date))
-    );
-    setMeetDate(""); setMeetTime(""); setMeetVenue(""); setMeetNotes("");
-    setMeetingModal(false);
-    showToast("✓ Meeting added");
-  };
-
-  const saveConfig = (form) => {
-    if (!form.name.trim()) { showToast("Please enter a group name"); return; }
-    setGroupConfig(form);
-    showToast("✓ Group configuration saved");
+  function handleSelectGroup(g) {
+    setSelectedGroup(g);
     setActiveSection("dashboard");
-  };
+  }
+
+  function handleBack() {
+    setSelectedGroup(null);
+    setMembers([]);
+    setMeetings([]);
+    setActiveSection("groups");
+  }
+
+  async function saveGroup(form) {
+    try {
+      const { data } = await axios.post(`${API}/api/group`, form, { headers: authHeader() });
+      setGroups((prev) => [data, ...prev]);
+      setShowGroupForm(false);
+      showToast(`✓ "${data.name}" created`);
+    } catch (err) {
+      showToast("Failed to save: " + (err.response?.data?.error || err.message));
+    }
+  }
+
+  async function sendInvite() {
+    if (!inviteName.trim() || !inviteContact.trim()) {
+      showToast("Please fill in all fields"); return;
+    }
+    try {
+      const { data } = await axios.post(
+        `${API}/api/members`,
+        { name: inviteName, contact: inviteContact, groupId: selectedGroup._id },
+        { headers: authHeader() }
+      );
+      setMembers((prev) => [...prev, data]);
+      setInviteName(""); setInviteContact("");
+      setInviteModal(false);
+      showToast(`✓ Invite sent to ${inviteName.trim()}`);
+    } catch (err) {
+      showToast("Failed: " + (err.response?.data?.error || err.message));
+    }
+  }
+
+  async function addMeeting() {
+    if (!meetDate || !meetVenue.trim()) {
+      showToast("Please add date and venue"); return;
+    }
+    try {
+      const { data } = await axios.post(
+        `${API}/api/meetings`,
+        { date: meetDate, time: meetTime, venue: meetVenue, notes: meetNotes, groupId: selectedGroup._id },
+        { headers: authHeader() }
+      );
+      setMeetings((prev) => [...prev, data].sort((a, b) => new Date(a.date) - new Date(b.date)));
+      setMeetDate(""); setMeetTime(""); setMeetVenue(""); setMeetNotes("");
+      setMeetingModal(false);
+      showToast("✓ Meeting added");
+    } catch (err) {
+      showToast("Failed: " + (err.response?.data?.error || err.message));
+    }
+  }
+
+  async function handleReorder(reordered) {
+    setMembers(reordered);
+    try {
+      await axios.put(
+        `${API}/api/members/reorder`,
+        { order: reordered.map((m, i) => ({ id: m._id, slot: i + 1 })) },
+        { headers: authHeader() }
+      );
+    } catch {
+      showToast("Failed to save order");
+    }
+  }
+
+  async function handlePay(member) {
+    setPayLoading(true)
+    try {
+      const { data } = await axios.post(
+        `${API}/api/payfast/contribute`,
+        { groupId: selectedGroup._id, memberId: member._id },
+        { headers: authHeader() }
+      )
+      // Redirect member to PayFast payment page
+      window.location.href = data.paymentUrl
+    } catch (err) {
+      showToast("Payment error: " + (err.response?.data?.error || err.message))
+    } finally {
+      setPayLoading(false)
+    }
+  }  // This is a placeholder function. In a real app, you'd handle the PayFast response and update contributions/disbursements accordingly.
+
+  async function handleDisburse(member) {
+    setPayLoading(true)
+    try {
+      const { data } = await axios.post(
+        `${API}/api/payfast/disburse`,
+        { groupId: selectedGroup._id, memberId: member._id },
+        { headers: authHeader() }
+      )
+      setDisbursements((prev) => [data.disbursement, ...prev])
+      showToast(data.message)
+    } catch (err) {
+      showToast("Error: " + (err.response?.data?.error || err.message))
+    } finally {
+      setPayLoading(false)
+    }
+  } // This is a placeholder function. In a real app, you'd handle the PayFast response and update contributions/disbursements accordingly.
+
+  async function handleMarkPaid(disbursementId) {
+    try {
+      const { data } = await axios.patch(
+        `${API}/api/payfast/disburse/${disbursementId}`,
+        {},
+        { headers: authHeader() }
+      )
+      setDisbursements((prev) => prev.map((d) => d._id === disbursementId ? data : d))
+      showToast("✓ Payout marked as paid")
+    } catch (err) {
+      showToast("Error: " + (err.response?.data?.error || err.message))
+    }
+  } // This is a placeholder function. In a real app, you'd handle the PayFast response and update the disbursement status accordingly.
+
+  const topbarTitle =
+    activeSection === "groups"    ? "My Stokvels" :
+    activeSection === "dashboard" ? selectedGroup?.name :
+    NAV_ITEMS.find((n) => n.id === activeSection)?.label || "";
+
+  // Show create group form fullscreen
+  if (showGroupForm) {
+    return (
+      <div className="app-layout">
+        <aside className="sidebar" aria-label="Navigation">
+          <div className="sidebar-logo" aria-hidden="true">
+            <span className="logo-icon">◈</span>
+            <span className="logo-text">Stokvel</span>
+          </div>
+        </aside>
+        <div className="main">
+          <header className="topbar">
+            <button className="btn-back" onClick={() => setShowGroupForm(false)}>← Back</button>
+            <h1 className="topbar-title">New Group</h1>
+          </header>
+          <main>
+            <GroupForm onSave={saveGroup} onCancel={() => setShowGroupForm(false)} />
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    // ↓ THIS is the only change — replaced <> with a real div
     <div className="app-layout">
 
-      {/* Sidebar */}
-      <aside className="sidebar">
-        <div className="sidebar-logo">
+      <aside className="sidebar" aria-label="Main navigation">
+        <div className="sidebar-logo" aria-hidden="true">
           <span className="logo-icon">◈</span>
           <span className="logo-text">Stokvel</span>
         </div>
-        <nav className="sidebar-nav">
-          {navItems.map((item) => (
-            <a
-              key={item.id}
-              href="#"
-              className={`nav-item${activeSection === item.id ? " active" : ""}`}
-              onClick={(e) => { e.preventDefault(); setActiveSection(item.id); }}
-            >
-              <span className="nav-icon">{item.icon}</span> {item.label}
-            </a>
-          ))}
+
+        <nav aria-label="Sections">
+          <ul className="sidebar-nav">
+            {/* Always show My Groups; only show group-specific nav if a group is selected */}
+            {NAV_ITEMS.filter((n) => n.id === "groups" || selectedGroup).map((item) => (
+              <li key={item.id}>
+                <a
+                  href={`#${item.id}`}
+                  className={`nav-item${activeSection === item.id || (item.id === "groups" && activeSection === "dashboard") ? " active" : ""}`}
+                  aria-current={activeSection === item.id ? "page" : undefined}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (item.id === "groups") handleBack();
+                    else setActiveSection(item.id);
+                  }}
+                >
+                  <span className="nav-icon" aria-hidden="true">{item.icon}</span>
+                  {item.label}
+                </a>
+              </li>
+            ))}
+          </ul>
         </nav>
-        <div className="sidebar-footer">
-          <div className="admin-badge">ADMIN</div>
-          <p className="admin-name">—</p>
-        </div>
+
+        <footer className="sidebar-footer">
+          <span className="admin-badge">ADMIN</span>
+        </footer>
       </aside>
 
-      {/* Main */}
-      <main className="main">
+      <div className="main">
         <header className="topbar">
-          <div className="topbar-title">{sectionTitle}</div>
-          <div className="topbar-actions">
+          <h1 className="topbar-title">{topbarTitle}</h1>
+          {selectedGroup && activeSection === "members" && (
             <button className="btn-invite" onClick={() => setInviteModal(true)}>
               + Invite Member
             </button>
-          </div>
+          )}
         </header>
 
-        <section className={`section${activeSection === "dashboard" ? " active" : ""}`}>
-          <Dashboard
-            members={members}
-            meetings={meetings}
-            groupConfig={groupConfig}
-            onConfigureGroup={() => setActiveSection("create-group")}
-          />
-        </section>
+        <main id="main-content">
+          <div hidden={activeSection !== "groups"}>
+            <GroupsList
+              groups={groups}
+              loading={loadingGroups}
+              onSelect={handleSelectGroup}
+              onNew={() => setShowGroupForm(true)}
+            />
+          </div>
 
-        <section className={`section${activeSection === "create-group" ? " active" : ""}`}>
-          <CreateGroup groupConfig={groupConfig} onSave={saveConfig} />
-        </section>
+          <div hidden={activeSection !== "dashboard"}>
+            {selectedGroup && (
+              <Dashboard
+                group={selectedGroup}
+                members={members}
+                meetings={meetings}
+                onBack={handleBack}
+              />
+            )}
+          </div>
 
-        <section className={`section${activeSection === "members" ? " active" : ""}`}>
-          <Members members={members} onInvite={() => setInviteModal(true)} />
-        </section>
+          <div hidden={activeSection !== "members"}>
+            <Members members={members} onInvite={() => setInviteModal(true)} />
+          </div>
 
-        <section className={`section${activeSection === "payouts" ? " active" : ""}`}>
-          <Payouts members={members} groupConfig={groupConfig} onReorder={setMembers} />
-        </section>
+          <div hidden={activeSection !== "payouts"}>
+            <Payouts members={members} group={selectedGroup} onReorder={handleReorder} />
+          </div>
 
-        <section className={`section${activeSection === "meetings" ? " active" : ""}`}>
-          <Meetings meetings={meetings} onAddMeeting={() => setMeetingModal(true)} />
-        </section>
-      </main>
+          <div hidden={activeSection !== "meetings"}>
+            <Meetings meetings={meetings} onAddMeeting={() => setMeetingModal(true)} />
+          </div>
+
+          <div hidden={activeSection !== "contributions"}>
+            <Contributions
+              contributions={contributions}
+              members={members}
+              group={selectedGroup || {}}
+              onPay={handlePay}
+              loading={payLoading}
+            />
+          </div>
+          <div hidden={activeSection !== "disbursements"}>
+            <Disbursements
+              disbursements={disbursements}
+              members={members}
+              group={selectedGroup || {}}
+              contributions={contributions}
+              onDisburse={handleDisburse}
+              onMarkPaid={handleMarkPaid}
+              loading={payLoading}
+            />
+          </div>
+        </main>
+      </div>
 
       {/* Invite Modal */}
       <Modal
@@ -528,15 +924,17 @@ export default function Group() {
         onClose={() => setInviteModal(false)}
         title="Invite a Member"
         actions={[
-          <button key="send" className="btn-primary" onClick={sendInvite}>Send Invite</button>,
-          <button key="cancel" className="btn-ghost" onClick={() => setInviteModal(false)}>Cancel</button>,
+          <button key="send"   className="btn-primary" onClick={sendInvite}>Send Invite</button>,
+          <button key="cancel" className="btn-ghost"   onClick={() => setInviteModal(false)}>Cancel</button>,
         ]}
       >
-        <Field label="Full Name">
-          <input value={inviteName} onChange={(e) => setInviteName(e.target.value)} placeholder="e.g. Zanele Dlamini" />
+        <Field label="Full Name" htmlFor="invite-name">
+          <input id="invite-name" type="text" value={inviteName}
+            onChange={(e) => setInviteName(e.target.value)} placeholder="e.g. Zanele Dlamini" />
         </Field>
-        <Field label="Phone / Email">
-          <input value={inviteContact} onChange={(e) => setInviteContact(e.target.value)} placeholder="e.g. 082 000 0000" />
+        <Field label="Phone / Email" htmlFor="invite-contact">
+          <input id="invite-contact" type="text" value={inviteContact}
+            onChange={(e) => setInviteContact(e.target.value)} placeholder="e.g. 082 000 0000" />
         </Field>
       </Modal>
 
@@ -546,26 +944,27 @@ export default function Group() {
         onClose={() => setMeetingModal(false)}
         title="Add Meeting"
         actions={[
-          <button key="add" className="btn-primary" onClick={addMeeting}>Add Meeting</button>,
-          <button key="cancel" className="btn-ghost" onClick={() => setMeetingModal(false)}>Cancel</button>,
+          <button key="add"    className="btn-primary" onClick={addMeeting}>Add Meeting</button>,
+          <button key="cancel" className="btn-ghost"   onClick={() => setMeetingModal(false)}>Cancel</button>,
         ]}
       >
-        <Field label="Date">
-          <input type="date" value={meetDate} onChange={(e) => setMeetDate(e.target.value)} />
+        <Field label="Date" htmlFor="meet-date">
+          <input id="meet-date" type="date" value={meetDate} onChange={(e) => setMeetDate(e.target.value)} />
         </Field>
-        <Field label="Time">
-          <input type="time" value={meetTime} onChange={(e) => setMeetTime(e.target.value)} />
+        <Field label="Time" htmlFor="meet-time">
+          <input id="meet-time" type="time" value={meetTime} onChange={(e) => setMeetTime(e.target.value)} />
         </Field>
-        <Field label="Venue">
-          <input value={meetVenue} onChange={(e) => setMeetVenue(e.target.value)} placeholder="e.g. Community Hall / Zoom" />
+        <Field label="Venue" htmlFor="meet-venue">
+          <input id="meet-venue" type="text" value={meetVenue}
+            onChange={(e) => setMeetVenue(e.target.value)} placeholder="e.g. Community Hall / Zoom" />
         </Field>
-        <Field label="Notes">
-          <input value={meetNotes} onChange={(e) => setMeetNotes(e.target.value)} placeholder="Optional agenda..." />
+        <Field label="Notes" htmlFor="meet-notes">
+          <input id="meet-notes" type="text" value={meetNotes}
+            onChange={(e) => setMeetNotes(e.target.value)} placeholder="Optional agenda..." />
         </Field>
       </Modal>
 
       <Toast message={toast} />
-
     </div>
   );
 }

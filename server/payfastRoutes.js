@@ -77,14 +77,20 @@ const Disbursement = mongoose.models.Disbursement
   || mongoose.model("Disbursement", disbursementSchema)
 
 // ── PayFast signature helper ──────────────────────────────────────────────────
+
 function generateSignature(data, passphrase = "") {
-  // Build query string from data, sorted as PayFast expects
-  let str = Object.entries(data)
-    .map(([k, v]) => `${k}=${encodeURIComponent(String(v).trim())}`)
+  // Remove empty values and signature field
+  const filtered = Object.fromEntries(
+    Object.entries(data).filter(([k, v]) => v !== "" && v !== null && v !== undefined && k !== "signature")
+  )
+
+  // Build query string — do NOT use encodeURIComponent, use raw values
+  let str = Object.entries(filtered)
+    .map(([k, v]) => `${k}=${encodeURIComponent(String(v).trim()).replace(/%20/g, "+")}`)
     .join("&")
 
-  if (passphrase) {
-    str += `&passphrase=${encodeURIComponent(passphrase.trim())}`
+  if (passphrase && passphrase.trim() !== "") {
+    str += `&passphrase=${encodeURIComponent(passphrase.trim()).replace(/%20/g, "+")}`
   }
 
   return crypto.createHash("md5").update(str).digest("hex")
@@ -134,27 +140,31 @@ router.post("/contribute", protect, async (req, res) => {
     })
 
     // Build PayFast payment data
+    // Build payment data
     const paymentData = {
-      merchant_id:  MERCHANT_ID,
-      merchant_key: MERCHANT_KEY,
-      return_url:   `${FRONTEND_URL}/group?payment=success&ref=${reference}`,
-      cancel_url:   `${FRONTEND_URL}/group?payment=cancelled&ref=${reference}`,
-      notify_url:   `${BACKEND_URL}/api/payfast/itn`,           // PayFast posts here after payment
-      name_first:   member.name.split(" ")[0],
-      name_last:    member.name.split(" ").slice(1).join(" ") || "Member",
-      email_address: member.contact.includes("@") ? member.contact : `member+${member._id}@stokvel.app`,
-      m_payment_id: reference,                                   // our reference
-      amount:       Number(group.amount).toFixed(2),
-      item_name:    `${group.name} - ${month} Contribution`,
-      item_description: `Monthly stokvel contribution for ${member.name}`,
-    }
+        merchant_id:      MERCHANT_ID,
+        merchant_key:     MERCHANT_KEY,  // needed for the URL but NOT for signature
+        return_url:       `${FRONTEND_URL}/group?payment=success&ref=${reference}`,
+        cancel_url:       `${FRONTEND_URL}/group?payment=cancelled&ref=${reference}`,
+        notify_url:       `${BACKEND_URL}/api/payfast/itn`,
+        name_first:       member.name.split(" ")[0],
+        name_last:        member.name.split(" ").slice(1).join(" ") || "Member",
+        email_address:    member.contact.includes("@") ? member.contact : `member+${member._id}@stokvel.app`,
+        m_payment_id:     reference,
+        amount:           Number(group.amount).toFixed(2),
+        item_name:        "Stokvel Contribution",
+        }
 
-    // Generate signature
-    paymentData.signature = generateSignature(paymentData, PASSPHRASE)
-
+    // Generate signature WITHOUT merchant_key
+    const signatureData = { ...paymentData }
+    delete signatureData.merchant_key
+    paymentData.signature = generateSignature(signatureData, PASSPHRASE)
     // Build PayFast redirect URL
     const params = new URLSearchParams(paymentData).toString()
     const paymentUrl = `${PAYFAST_HOST}/eng/process?${params}`
+
+    console.log("PayFast URL:", paymentUrl)
+    console.log("Payment Data:", JSON.stringify(paymentData, null, 2))
 
     res.json({
       paymentUrl,
