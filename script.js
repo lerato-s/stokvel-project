@@ -26,7 +26,7 @@ async function connectDB() {
 
 // Health check endpoint for everyone to use
 
-app.get('/api/health', (req, res) => {
+app.get('/login', (req, res) => {
     res.json({ status: 'ok', message: 'Server is running' });
 });
 
@@ -58,11 +58,13 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     expiresAt.setHours(expiresAt.getHours() + 1); // expires in an hour
 
     await db.collection('passwordResets').insertOne({
-        email, token 
-        /*, expiresAt, createdAt: new Date()*/
+ 
+        email, token // , expiresAt, createdAt: new Date()
+
+       
     });
 
-    const passwordLink = `http://localhost:3000/reset-password.html?token=${token}&email=${encodeURIComponent(email)}`;
+    const passwordLink = `http://localhost:3001/reset-password.html?token=${token}&email=${encodeURIComponent(email)}`;
     console.log(`Reset link for ${email}: ${passwordLink}`);
 
     res.json({
@@ -75,7 +77,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 
 // reset password post
 
-app.post('/api/auth/reset-password', async (req, res) => {
+app.post('http://localhost:3001/reset-password.html?token=${token}&email=${encodeURIComponent(email)}', async (req, res) => {
     
     const email = req.body.email;
     const token = req.body.token;
@@ -105,6 +107,36 @@ app.post('/api/auth/reset-password', async (req, res) => {
     res.json({message : "Password has been successfully reset! You can now login."});
 })
 
+app.post("/api/auth/reset-password", async (req, res) => {
+  try {
+    const { email, token, newPassword } = req.body;
+
+    const user = await UserModel.findOne({
+      email,
+      resetToken: token
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        error: "Invalid token"
+      });
+    }
+
+    user.password = newPassword;
+    user.resetToken = undefined;
+
+    await user.save();
+
+    res.json({
+      message: "Password reset successful"
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      error: "Server error"
+    });
+  }
+});
 
 
 connectDB().then(() => {
