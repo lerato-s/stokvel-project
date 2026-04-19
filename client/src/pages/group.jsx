@@ -458,7 +458,9 @@ export default function Group() {
   };
 
   return (
-    <>
+    // ↓ THIS is the only change — replaced <> with a real div
+    <div className="app-layout">
+
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-logo">
@@ -494,7 +496,6 @@ export default function Group() {
           </div>
         </header>
 
-        {/* Sections use the same .section / .section.active pattern as the original CSS */}
         <section className={`section${activeSection === "dashboard" ? " active" : ""}`}>
           <Dashboard
             members={members}
@@ -564,6 +565,7 @@ export default function Group() {
       </Modal>
 
       <Toast message={toast} />
-    </>
+
+    </div>
   );
 }

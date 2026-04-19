@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import "../pages/login.css";
+import "../pages/Login.css";
 import LoginForm from "../components/LoginForm";
 
 function Login() {
@@ -33,8 +33,8 @@ function Login() {
       localStorage.setItem("user", JSON.stringify(user));
         
       if (result.data.message === "Successfully logged in"){
-        if (role === "admin"){
-           navigate("/group");
+        {
+           navigate("/g");
         }
     }
 

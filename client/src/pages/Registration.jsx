@@ -39,7 +39,7 @@ function Registration() {
         });
 
         console.log(result.data);
-        navigate('/g')
+        navigate('/login')
     } catch (error) {
         console.error("Error registering user:", error);
         setError("Registration failed: " + (error.response?.data?.error || error.message));
