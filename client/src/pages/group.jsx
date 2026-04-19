@@ -848,6 +848,7 @@ export default function Group() {
   const [toast, setToast] = useState("");
   const [loading, setLoading] = useState(true);
 
+
   // Contribution log modal
   const [contribModal, setContribModal] = useState(false);
   const [contribAmount, setContribAmount] = useState("");
