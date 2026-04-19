@@ -11,6 +11,7 @@ const bcrypt = require("bcryptjs")
 const jwt = require("jsonwebtoken")
 const crypto = require("crypto")
 const groupRoutes = require("./groupRoutes")
+const payfastRoutes = require("./payfastRoutes")
 
 const app = express()
 
@@ -22,6 +23,7 @@ app.use(cors({
 }));
 
 app.use("/api", groupRoutes)
+app.use("/api/payfast", payfastRoutes)
 // Connect to MongoDB
 // ✅ Correct
 mongoose.connect(process.env.MONGODB_URI)

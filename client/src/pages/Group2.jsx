@@ -4,6 +4,7 @@ import axios from "axios";
 import GroupForm from "../components/GroupForm";
 import "./group.css";
 
+
 const API = import.meta.env.VITE_API_URL;
 
 function authHeader() {
@@ -20,6 +21,24 @@ function formatDate(d) {
 }
 function getInitials(name) {
   return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
+}
+
+function currentMonth() {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+}
+
+function formatMonth(m) {
+  if (!m) return "—"
+  const [year, month] = m.split("-")
+  return new Date(year, month - 1).toLocaleDateString("en-ZA", { month: "long", year: "numeric" })
+}
+
+function formatDateTime(d) {
+  if (!d) return "—"
+  return new Date(d).toLocaleDateString("en-ZA", {
+    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+  })
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
@@ -311,12 +330,267 @@ function Meetings({ meetings, onAddMeeting }) {
   );
 }
 
+function Contributions({ contributions, members, group, onPay, loading }) {
+  const month = currentMonth()
+
+  // Which members have paid this month
+  const paidMemberIds = new Set(
+    contributions
+      .filter((c) => c.month === month && c.status === "paid")
+      .map((c) => c.member?._id || c.member)
+  )
+
+  const totalExpected  = group.amount && members.length
+    ? Number(group.amount) * members.length : 0
+  const totalCollected = contributions
+    .filter((c) => c.month === month && c.status === "paid")
+    .reduce((sum, c) => sum + c.amount, 0)
+  const progress = totalExpected ? Math.round((totalCollected / totalExpected) * 100) : 0
+
+  return (
+    <section aria-labelledby="contributions-heading">
+      <header className="section-header-bar">
+        <h2 id="contributions-heading">Contributions</h2>
+        <span className="month-label">{formatMonth(month)}</span>
+      </header>
+
+      {/* Progress bar */}
+      <div className="contribution-summary card" style={{ marginBottom: 24 }}>
+        <div className="contrib-summary-row">
+          <div>
+            <div className="stat-label">Collected This Month</div>
+            <div className="stat-value" style={{ fontSize: 22 }}>
+              R {totalCollected.toLocaleString()}
+              <span style={{ fontSize: 13, color: "var(--text-muted)", fontFamily: "var(--font-body)", fontWeight: 400 }}>
+                {" "}/ R {totalExpected.toLocaleString()}
+              </span>
+            </div>
+          </div>
+          <div className="contrib-progress-wrap">
+            <div className="contrib-progress-bar">
+              <div
+                className="contrib-progress-fill"
+                style={{ width: `${progress}%` }}
+                role="progressbar"
+                aria-valuenow={progress}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              />
+            </div>
+            <span className="contrib-progress-label">{progress}% collected</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Member payment status list */}
+      {members.length === 0 ? (
+        <p className="empty-state">No members yet. Invite members first.</p>
+      ) : (
+        <ul className="contributions-list" aria-label="Member contribution status">
+          {members.map((m) => {
+            const hasPaid   = paidMemberIds.has(m._id)
+            const record    = contributions.find(
+              (c) => (c.member?._id || c.member) === m._id && c.month === month && c.status === "paid"
+            )
+            return (
+              <li key={m._id} className={`contribution-row${hasPaid ? " paid" : ""}`}>
+                <div className="payout-avatar">{m.initials}</div>
+                <div className="payout-name">
+                  <strong>{m.name}</strong>
+                  <span>{m.role}</span>
+                </div>
+
+                {hasPaid ? (
+                  <div className="contrib-paid-info">
+                    <span className="status-badge active">✓ Paid</span>
+                    <span className="contrib-ref">{record?.reference}</span>
+                    <span className="contrib-date">{formatDateTime(record?.paidAt)}</span>
+                  </div>
+                ) : (
+                  <div className="contrib-actions">
+                    <span className="status-badge pending">Unpaid</span>
+                    <button
+                      className="btn-pay"
+                      onClick={() => onPay(m)}
+                      disabled={loading}
+                    >
+                      Pay R{group.amount}
+                    </button>
+                  </div>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      )}
+
+      {/* Payment history */}
+      {contributions.length > 0 && (
+        <div style={{ marginTop: 32 }}>
+          <h3 className="card-title">Payment History</h3>
+          <div className="meetings-table-wrap">
+            <table className="meetings-table">
+              <caption className="sr-only">Contribution history</caption>
+              <thead>
+                <tr>
+                  {["Member","Month","Amount","Reference","Status","Date"].map((h) => (
+                    <th key={h} scope="col">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {contributions.map((c) => (
+                  <tr key={c._id}>
+                    <td>{c.member?.name || "—"}</td>
+                    <td>{formatMonth(c.month)}</td>
+                    <td style={{ color: "var(--green)", fontWeight: 600 }}>R{c.amount}</td>
+                    <td><code style={{ fontSize: 11, color: "var(--text-dim)" }}>{c.reference}</code></td>
+                    <td><span className={`status-badge ${c.status}`}>{c.status}</span></td>
+                    <td>{c.paidAt ? formatDateTime(c.paidAt) : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </section>
+  )
+} // End of Contributions section
+
+// ── Disbursements section (Treasurer) ─────────────────────────────────────────
+function Disbursements({ disbursements, members, group, contributions, onDisburse, onMarkPaid, loading }) {
+  const month = currentMonth()
+
+  const totalCollected = contributions
+    .filter((c) => c.month === month && c.status === "paid")
+    .reduce((sum, c) => sum + c.amount, 0)
+
+  const disbursedMemberIds = new Set(
+    disbursements.map((d) => d.member?._id || d.member)
+  )
+
+  return (
+    <section aria-labelledby="disbursements-heading">
+      <header className="section-header-bar">
+        <h2 id="disbursements-heading">Payout Disbursements</h2>
+        <span className="month-label">{formatMonth(month)}</span>
+      </header>
+
+      {/* Pool summary */}
+      <div className="card contribution-summary" style={{ marginBottom: 24 }}>
+        <div className="contrib-summary-row">
+          <div>
+            <div className="stat-label">Available Pool</div>
+            <div className="stat-value" style={{ fontSize: 22 }}>
+              R {totalCollected.toLocaleString()}
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
+              collected this month from {contributions.filter(c => c.month === month && c.status === "paid").length} members
+            </div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div className="stat-label">Payout Method</div>
+            <div style={{ color: "var(--gold-light)", fontSize: 14, fontWeight: 600, marginTop: 4 }}>
+              {group.payoutMethod || "Not set"}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Members — initiate payout */}
+      {members.length === 0 ? (
+        <p className="empty-state">No members yet.</p>
+      ) : (
+        <ul className="contributions-list" aria-label="Disbursement roster">
+          {members.map((m, i) => {
+            const disbursed = disbursedMemberIds.has(m._id)
+            const record    = disbursements.find((d) => (d.member?._id || d.member) === m._id)
+            return (
+              <li key={m._id} className={`contribution-row${disbursed ? " paid" : ""}`}>
+                <span className="payout-num">{String(i + 1).padStart(2, "0")}</span>
+                <div className="payout-avatar">{m.initials}</div>
+                <div className="payout-name">
+                  <strong>{m.name}</strong>
+                  <span>{m.role}</span>
+                </div>
+
+                {disbursed ? (
+                  <div className="contrib-paid-info">
+                    <span className={`status-badge ${record.status}`}>{record.status}</span>
+                    <span className="contrib-ref">R{record.amount?.toLocaleString()}</span>
+                    {record.status === "pending" && (
+                      <button
+                        className="btn-secondary"
+                        style={{ fontSize: 12, padding: "5px 12px" }}
+                        onClick={() => onMarkPaid(record._id)}
+                        disabled={loading}
+                      >
+                        Mark Paid
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="contrib-actions">
+                    <span className="status-badge pending">No Payout</span>
+                    <button
+                      className="btn-pay"
+                      onClick={() => onDisburse(m)}
+                      disabled={loading || totalCollected === 0}
+                    >
+                      Initiate Payout
+                    </button>
+                  </div>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      )}
+
+      {/* Disbursement history */}
+      {disbursements.length > 0 && (
+        <div style={{ marginTop: 32 }}>
+          <h3 className="card-title">Disbursement History</h3>
+          <div className="meetings-table-wrap">
+            <table className="meetings-table">
+              <caption className="sr-only">Disbursement history</caption>
+              <thead>
+                <tr>
+                  {["Member","Month","Amount","Reference","Status","Note"].map((h) => (
+                    <th key={h} scope="col">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {disbursements.map((d) => (
+                  <tr key={d._id}>
+                    <td>{d.member?.name || "—"}</td>
+                    <td>{formatMonth(d.month)}</td>
+                    <td style={{ color: "var(--gold-light)", fontWeight: 600 }}>R{d.amount?.toLocaleString()}</td>
+                    <td><code style={{ fontSize: 11, color: "var(--text-dim)" }}>{d.reference}</code></td>
+                    <td><span className={`status-badge ${d.status}`}>{d.status}</span></td>
+                    <td style={{ fontSize: 12 }}>{d.note || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </section>
+  )
+} // End of Disbursements section
+
 // ── Nav ───────────────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
   { id: "groups",    icon: "⌂", label: "My Groups" },
   { id: "members",   icon: "⬡", label: "Members" },
   { id: "payouts",   icon: "◎", label: "Payout Order" },
   { id: "meetings",  icon: "◷", label: "Meetings" },
+  { id: "contributions", icon: "₴", label: "Contributions" },
+  { id: "disbursements", icon: "◈", label: "Disbursements" },
+
 ];
 
 // ── Root ──────────────────────────────────────────────────────────────────────
@@ -338,6 +612,9 @@ export default function Group() {
   const [meetTime,      setMeetTime]      = useState("");
   const [meetVenue,     setMeetVenue]     = useState("");
   const [meetNotes,     setMeetNotes]     = useState("");
+  const [contributions,  setContributions]  = useState([])
+  const [disbursements,  setDisbursements]  = useState([])
+  const [payLoading,     setPayLoading]     = useState(false)
 
   const showToast = useCallback((msg) => {
     setToast(msg);
@@ -359,13 +636,34 @@ export default function Group() {
     Promise.all([
       axios.get(`${API}/api/members?groupId=${selectedGroup._id}`, h),
       axios.get(`${API}/api/meetings?groupId=${selectedGroup._id}`, h),
+      axios.get(`${API}/api/payfast/contributions?groupId=${selectedGroup._id}`, h),
+      axios.get(`${API}/api/payfast/disbursements?groupId=${selectedGroup._id}`, h),
     ])
-      .then(([mRes, mtRes]) => {
+      .then(([mRes, mtRes, cRes, dRes]) => {
         setMembers(mRes.data);
         setMeetings(mtRes.data);
+        setContributions(cRes.data);
+        setDisbursements(dRes.data);
       })
       .catch(() => showToast("Failed to load group data"));
   }, [selectedGroup]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const payment = params.get("payment")
+    const ref     = params.get("ref")
+    if (payment === "success") {
+      showToast(`✓ Payment successful! Ref: ${ref}`)
+      if (selectedGroup) {
+        axios.get(`${API}/api/payfast/contributions?groupId=${selectedGroup._id}`, { headers: authHeader() })
+          .then((r) => setContributions(r.data))
+      }
+      window.history.replaceState({}, "", window.location.pathname)
+    } else if (payment === "cancelled") {
+      showToast("Payment was cancelled")
+      window.history.replaceState({}, "", window.location.pathname)
+    }
+  }, [selectedGroup])
 
   function handleSelectGroup(g) {
     setSelectedGroup(g);
@@ -440,6 +738,54 @@ export default function Group() {
       showToast("Failed to save order");
     }
   }
+
+  async function handlePay(member) {
+    setPayLoading(true)
+    try {
+      const { data } = await axios.post(
+        `${API}/api/payfast/contribute`,
+        { groupId: selectedGroup._id, memberId: member._id },
+        { headers: authHeader() }
+      )
+      // Redirect member to PayFast payment page
+      window.location.href = data.paymentUrl
+    } catch (err) {
+      showToast("Payment error: " + (err.response?.data?.error || err.message))
+    } finally {
+      setPayLoading(false)
+    }
+  }  // This is a placeholder function. In a real app, you'd handle the PayFast response and update contributions/disbursements accordingly.
+
+  async function handleDisburse(member) {
+    setPayLoading(true)
+    try {
+      const { data } = await axios.post(
+        `${API}/api/payfast/disburse`,
+        { groupId: selectedGroup._id, memberId: member._id },
+        { headers: authHeader() }
+      )
+      setDisbursements((prev) => [data.disbursement, ...prev])
+      showToast(data.message)
+    } catch (err) {
+      showToast("Error: " + (err.response?.data?.error || err.message))
+    } finally {
+      setPayLoading(false)
+    }
+  } // This is a placeholder function. In a real app, you'd handle the PayFast response and update contributions/disbursements accordingly.
+
+  async function handleMarkPaid(disbursementId) {
+    try {
+      const { data } = await axios.patch(
+        `${API}/api/payfast/disburse/${disbursementId}`,
+        {},
+        { headers: authHeader() }
+      )
+      setDisbursements((prev) => prev.map((d) => d._id === disbursementId ? data : d))
+      showToast("✓ Payout marked as paid")
+    } catch (err) {
+      showToast("Error: " + (err.response?.data?.error || err.message))
+    }
+  } // This is a placeholder function. In a real app, you'd handle the PayFast response and update the disbursement status accordingly.
 
   const topbarTitle =
     activeSection === "groups"    ? "My Stokvels" :
@@ -547,6 +893,27 @@ export default function Group() {
 
           <div hidden={activeSection !== "meetings"}>
             <Meetings meetings={meetings} onAddMeeting={() => setMeetingModal(true)} />
+          </div>
+
+          <div hidden={activeSection !== "contributions"}>
+            <Contributions
+              contributions={contributions}
+              members={members}
+              group={selectedGroup || {}}
+              onPay={handlePay}
+              loading={payLoading}
+            />
+          </div>
+          <div hidden={activeSection !== "disbursements"}>
+            <Disbursements
+              disbursements={disbursements}
+              members={members}
+              group={selectedGroup || {}}
+              contributions={contributions}
+              onDisburse={handleDisburse}
+              onMarkPaid={handleMarkPaid}
+              loading={payLoading}
+            />
           </div>
         </main>
       </div>
