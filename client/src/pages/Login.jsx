@@ -33,8 +33,8 @@ function Login() {
       localStorage.setItem("user", JSON.stringify(user));
         
       if (result.data.message === "Successfully logged in"){
-        if (role === "member"){
-           navigate("/member-dashboard");
+        {
+           navigate("/g");
         }
     }
 
