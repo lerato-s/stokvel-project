@@ -2,6 +2,8 @@ console.log("AUTH SERVER STARTED - index.js loading")
 
 const dotenv = require("dotenv")
 dotenv.config()
+dotenv.config()
+console.log("CLIENT_URL is:", process.env.CLIENT_URL) // ← add this
 
 const express = require("express")
 const mongoose = require("mongoose")
@@ -12,15 +14,18 @@ const jwt = require("jsonwebtoken")
 const crypto = require("crypto")
 const groupRoutes = require("./groupRoutes")
 const payfastRoutes = require("./payfastRoutes")
-
 const app = express()
 
 app.use(express.json())
 app.use(cors({
   origin: process.env.CLIENT_URL,
-  methods: ["GET", "POST", "PUT", "DELETE"],
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH",],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
   credentials: true
 }));
+
 
 app.use("/api", groupRoutes)
 app.use("/api/payfast", payfastRoutes)

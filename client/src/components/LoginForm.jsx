@@ -9,7 +9,8 @@ function LoginForm({
     setEmail,
     setPassword,
     showPassword,
-    setShowPassword
+    setShowPassword,
+    isLoading
 
 }){
     return (
@@ -57,7 +58,9 @@ function LoginForm({
          </span>
         </section>
 
-        <button type="submit">Login</button>
+        <button type="submit" disabled={isLoading}>   
+          {isLoading ? "Logging in..." : "Login"}
+        </button>
         <Link to="/forgot-password">Forgot Password?</Link>
       </form>
 

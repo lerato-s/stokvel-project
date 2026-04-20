@@ -3,7 +3,7 @@
 //
 // Install test deps first:
 //   npm install --save-dev jest supertest mongodb-memory-server @jest/globals
-
+jest.setTimeout(30000)
 const request  = require("supertest")
 const express  = require("express")
 const mongoose = require("mongoose")
@@ -104,7 +104,9 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await mongoose.disconnect()
-  await mongod.stop()
+  if (mongod) {
+    await mongod.stop()
+  }
 })
 
 afterEach(async () => {
