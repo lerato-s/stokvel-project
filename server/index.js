@@ -209,7 +209,10 @@ app.post('/reset-password', async (req, res) => {
   }
 });
 
+if (process.env.NODE_ENV !== 'test'){
+  app.listen(process.env.PORT || 3001, () => {
+      console.log("Server is running on port " + (process.env.PORT || 3001))
+  });
+}
 
-app.listen(process.env.PORT || 3001, () => {
-    console.log("Server is running on port " + (process.env.PORT || 3001))
-})
+module.exports=app;
