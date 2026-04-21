@@ -15,7 +15,7 @@ UserSchema.pre("save" , async function (){ //hashing function in our database we
     if(!this.isModified("password"))return ;
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password,salt);
-     // ✅ confirm hashing completes
+     // confirm hashing completes
     
 });
 
