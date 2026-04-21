@@ -1,8 +1,0 @@
-{
-    "appService.zipIgnorePattern": [
-        "node_modules{,/**}",
-        ".vscode{,/**}"
-    ],
-    "appService.defaultWebAppToDeploy": "/subscriptions/82e326fd-703f-442c-bc03-3350a6dad4ef/resourceGroups/stokvel-rg/providers/Microsoft.Web/sites/stokvel-backed",
-    "appService.deploySubpath": "server"
-}
