@@ -12,8 +12,6 @@ Thumbs.db
 
 # Coverage reports
 coverage/
-server/coverage/
-**/coverage/
 
 # Logs
 npm-debug.log*
@@ -30,3 +28,7 @@ build/
 # Optional editor files
 .vscode/
 .idea/
+
+#Temporary files
+*.tmp
+*.temp

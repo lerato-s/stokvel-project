@@ -19,7 +19,7 @@ const {
   sendMissingContributionEmail,
   sendMeetingMinutes,
   sendRoleAssignedEmail,
-} = require("./emailService")
+} = require("../services/emailService")
 
 // ── Auth middleware ───────────────────────────────────────────────────────────
 function protect(req, res, next) {
