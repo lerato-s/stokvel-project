@@ -21,7 +21,7 @@ const EMPTY_FORM = {
   rules: "",
 };
 
-export default function GroupForm({ initialValues = {}, onSave, isSaving = false, error = "" }) {
+export default function GroupForm({ initialValues = {}, onSave, onCancel, isSaving = false, error = "" }) {
   const [form, setForm] = useState({ ...EMPTY_FORM, ...initialValues });
 
   const set = (key) => (e) =>
@@ -238,6 +238,12 @@ export default function GroupForm({ initialValues = {}, onSave, isSaving = false
           <button type="button" className="btn-ghost" onClick={handleReset} disabled={isSaving}>
             Reset
           </button>
+
+          {onCancel && (
+            <button type="button" className="btn-ghost" onClick={onCancel} disabled={isSaving}>
+              Cancel
+            </button>
+          )}
         </div>
       </form>
     </section>

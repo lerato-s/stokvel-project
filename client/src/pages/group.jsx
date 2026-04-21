@@ -2,13 +2,18 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import axios from "axios";
 import GroupForm from "../components/GroupForm";
-import "./group.css";
+import "./Group.css";
 
 const API = import.meta.env.VITE_API_URL;
 
 function authHeader() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const token = user.token || user.accessToken || (user.user?.token);
+  const token =
+    localStorage.getItem("token") ||
+    user.token ||
+    user.accessToken ||
+    user.user?.token;
+
   if (token) return { Authorization: `Bearer ${token}` };
   return {};
 }
@@ -673,7 +678,7 @@ export default function Group() {
 
   // Load groups on mount
   useEffect(() => {
-    axios.get(`${API}/api/groups`, { headers: authHeader() })
+    axios.get(`${API}/api/my-groups`, { headers: authHeader() })
       .then((r) => setGroups(r.data))
       .catch(() => showToast("Failed to load groups"))
       .finally(() => setLoadingGroups(false));
@@ -767,36 +772,59 @@ export default function Group() {
     }
   }
 
-  async function saveGroup(form) {
-    try {
-      const { data } = await axios.post(`${API}/api/group`, form, { headers: authHeader() });
-      setGroups((prev) => [data, ...prev]);
-      setShowGroupForm(false);
-      showToast(`✓ "${data.name}" created`);
-    } catch (err) {
-      showToast("Failed to save: " + (err.response?.data?.error || err.message));
-    }
+
+  //your backend create route is POST /groups, so with app.use("/api", groupRoutes) the frontend must call /api/groups
+  //your backend returns { success, message, group }, so you must use data.group, not data
+async function saveGroup(form) {
+  try {
+    const payload = {
+      ...form,
+      amount: Number(form.amount),
+      max: Number(form.max),
+    };
+
+    const { data } = await axios.post(
+      `${API}/api/groups`,
+      payload,
+      { headers: authHeader() }
+    );
+
+    setGroups((prev) => [data.group, ...prev]);
+    setShowGroupForm(false);
+    showToast(`✓ "${data.group.name}" created`);
+  } catch (err) {
+    showToast("Failed to save: " + (err.response?.data?.error || err.message));
+  }
+}
+
+//your embedded-members backend adds members through POST /groups/:groupId/members
+//it expects email and optional role
+//it returns the updated members array
+async function sendInvite() {
+  if (!inviteContact.trim()) {
+    showToast("Please enter an email");
+    return;
   }
 
-  async function sendInvite() {
-    if (!inviteName.trim() || !inviteContact.trim()) {
-      showToast("Please fill in all fields"); return;
-    }
-    try {
-      const { data } = await axios.post(
-        `${API}/api/members`,
-        { name: inviteName, contact: inviteContact, groupId: selectedGroup._id },
-        { headers: authHeader() }
-      );
-      setMembers((prev) => [...prev, data]);
-      setInviteName(""); setInviteContact("");
-      setInviteModal(false);
-      showToast(`✓ Invite sent to ${inviteName.trim()}`);
-    } catch (err) {
-      showToast("Failed: " + (err.response?.data?.error || err.message));
-    }
-  }
+  try {
+    const { data } = await axios.post(
+      `${API}/api/groups/${selectedGroup._id}/members`,
+      {
+        email: inviteContact,
+        role: "member"
+      },
+      { headers: authHeader() }
+    );
 
+    setMembers(data.members);
+    setInviteName("");
+    setInviteContact("");
+    setInviteModal(false);
+    showToast("✓ Member added successfully");
+  } catch (err) {
+    showToast("Failed: " + (err.response?.data?.error || err.message));
+  }
+}
   async function addMeeting() {
     if (!meetDate || !meetVenue.trim()) {
       showToast("Please add date and venue"); return;
