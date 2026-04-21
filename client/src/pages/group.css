@@ -919,6 +919,29 @@ textarea { resize: vertical; }
   margin-left: auto;
 }
 
+.role-select {
+  background: var(--bg-card, #1e1e2e);
+  color: var(--text, #fff);
+  border: 1px solid var(--border, #333);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  margin-left: auto;
+}
+.sidebar-user {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.sidebar-user-email {
+  font-size: 11px;
+  color: var(--text-dim, #888);
+  word-break: break-all;
+}
+
 .btn-pay {
   background: linear-gradient(135deg, var(--gold), var(--gold-light));
   color: #0e0c14;
@@ -947,6 +970,179 @@ textarea { resize: vertical; }
   white-space: nowrap;
   border: 0;
 }
+
+/* ── Add these to the bottom of your group.css ── */
+
+/* Sidebar user footer */
+.sidebar-footer {
+  padding: 16px;
+  border-top: 1px solid var(--border, #2a2a3a);
+  margin-top: auto;
+}
+
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sidebar-user-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--accent, #9b7fd4);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sidebar-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+  flex: 1;
+}
+
+.sidebar-user-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text, #fff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-user-email {
+  font-size: 10px;
+  color: var(--text-dim, #888);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-role-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.sidebar-role-badge.admin {
+  background: rgba(155, 127, 212, 0.2);
+  color: var(--accent, #9b7fd4);
+  border: 1px solid rgba(155, 127, 212, 0.3);
+}
+
+.sidebar-role-badge.treasurer {
+  background: rgba(212, 175, 55, 0.2);
+  color: var(--gold-light, #d4af37);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.sidebar-role-badge.member {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-dim, #888);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Payout method badge in roster header */
+.payout-method-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: rgba(155, 127, 212, 0.15);
+  color: var(--accent, #9b7fd4);
+  border: 1px solid rgba(155, 127, 212, 0.25);
+}
+
+/* Payout method info box */
+.payout-method-info {
+  padding: 14px 18px;
+  border-radius: 10px;
+  background: var(--bg-card, #1e1e2e);
+  border: 1px solid var(--border, #2a2a3a);
+}
+
+/* FIFO locked row */
+.payout-row.fifo-locked {
+  cursor: default;
+  opacity: 0.95;
+}
+
+.payout-row.fifo-locked:hover {
+  background: var(--bg-card, #1e1e2e);
+}
+
+.fifo-lock-icon {
+  font-size: 14px;
+  opacity: 0.5;
+  margin-left: auto;
+}
+
+/* Role select dropdown */
+.role-select {
+  background: var(--bg-card, #1e1e2e);
+  color: var(--text, #fff);
+  border: 1px solid var(--border, #333);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.role-select:focus {
+  outline: none;
+  border-color: var(--accent, #9b7fd4);
+}
+/* Role notice box */
+.role-notice {
+  padding: 14px 18px;
+  border-radius: 10px;
+  background: var(--bg-card, #1e1e2e);
+  border: 1px solid var(--border, #2a2a3a);
+}
+
+/* Role control buttons */
+.role-control { margin-left: auto; }
+
+/* You badge */
+.you-badge {
+  font-size: 11px;
+  color: var(--text-dim, #888);
+  font-weight: 400;
+}
+
+/* Admin lock label */
+.admin-lock {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--accent, #9b7fd4);
+  font-weight: 600;
+}
+
+/* Role dot in dashboard */
+.role-summary { margin-top: 16px; border-top: 1px solid var(--border, #2a2a3a); padding-top: 16px; }
+.role-summary-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
+.role-summary-label { font-size: 12px; color: var(--text-dim, #888); }
+.role-summary-value { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
+.role-dot { width: 8px; height: 8px; border-radius: 50%; }
+.role-dot.admin { background: var(--accent, #9b7fd4); }
+.role-dot.treasurer { background: var(--gold-light, #d4af37); }
+
+/* Member role colors */
+.role-admin { color: var(--accent, #9b7fd4); }
+.role-treasurer { color: var(--gold-light, #d4af37); }
+.role-member { color: var(--text-dim, #888); }
 
 /* === SCROLLBAR === */
 ::-webkit-scrollbar { width: 6px; height: 6px; }

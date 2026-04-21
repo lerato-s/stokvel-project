@@ -134,7 +134,7 @@ router.post("/contribute", protect, async (req, res) => {
       amount: group.amount,
       month,
       status: "pending",
-      reference,
+      reference, // unique reference
     })
 
     // Build PayFast payment data

@@ -4,12 +4,13 @@ import axios from "axios";
 import GroupForm from "../components/GroupForm";
 import "./group.css";
 
-
 const API = import.meta.env.VITE_API_URL;
 
 function authHeader() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
-  return user.token ? { Authorization: `Bearer ${user.token}` } : {};
+  const token = user.token || user.accessToken || (user.user?.token);
+  if (token) return { Authorization: `Bearer ${token}` };
+  return {};
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -22,23 +23,20 @@ function formatDate(d) {
 function getInitials(name) {
   return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
 }
-
 function currentMonth() {
-  const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
-
 function formatMonth(m) {
-  if (!m) return "—"
-  const [year, month] = m.split("-")
-  return new Date(year, month - 1).toLocaleDateString("en-ZA", { month: "long", year: "numeric" })
+  if (!m) return "—";
+  const [year, month] = m.split("-");
+  return new Date(year, month - 1).toLocaleDateString("en-ZA", { month: "long", year: "numeric" });
 }
-
 function formatDateTime(d) {
-  if (!d) return "—"
+  if (!d) return "—";
   return new Date(d).toLocaleDateString("en-ZA", {
     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
-  })
+  });
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
@@ -82,7 +80,7 @@ function Field({ label, htmlFor, children }) {
   );
 }
 
-// ── Groups list (home screen) ─────────────────────────────────────────────────
+// ── Groups list ───────────────────────────────────────────────────────────────
 function GroupsList({ groups, loading, onSelect, onNew }) {
   return (
     <section className="groups-list-page" aria-labelledby="groups-heading">
@@ -90,7 +88,6 @@ function GroupsList({ groups, loading, onSelect, onNew }) {
         <h2 id="groups-heading">My Stokvels</h2>
         <button className="btn-primary" onClick={onNew}>+ New Group</button>
       </header>
-
       {loading ? (
         <p className="empty-state">Loading groups…</p>
       ) : groups.length === 0 ? (
@@ -118,7 +115,7 @@ function GroupsList({ groups, loading, onSelect, onNew }) {
   );
 }
 
-// ── Dashboard (single group detail) ──────────────────────────────────────────
+// ── Dashboard ─────────────────────────────────────────────────────────────────
 function Dashboard({ group, members, meetings, onBack }) {
   const pool =
     group.amount && members.length
@@ -132,7 +129,7 @@ function Dashboard({ group, members, meetings, onBack }) {
   const stats = [
     { label: "Total Members", value: members.length },
     { label: "Monthly Pool",  value: pool },
-    { label: "Next Payout",   value: members.length ? "Slot 1" : "—" },
+    { label: "Payout Method", value: group.payoutMethod || "—" },
     { label: "Next Meeting",  value: upcoming.length ? formatDate(upcoming[0].date) : "—" },
   ];
 
@@ -169,9 +166,7 @@ function Dashboard({ group, members, meetings, onBack }) {
 
       <div className="dashboard-grid">
         <article className="card group-summary">
-          <header className="card-header">
-            <h3>Group Details</h3>
-          </header>
+          <header className="card-header"><h3>Group Details</h3></header>
           <dl className="group-details">
             {details.map(([label, val]) => (
               <div className="group-detail" key={label}>
@@ -209,7 +204,11 @@ function Dashboard({ group, members, meetings, onBack }) {
 }
 
 // ── Members ───────────────────────────────────────────────────────────────────
-function Members({ members, onInvite }) {
+function Members({ members, onInvite, onRoleChange, currentUserEmail }) {
+  const isAdmin = members.some(
+    (m) => m.contact === currentUserEmail && m.role === "Admin"
+  );
+
   return (
     <section aria-labelledby="members-heading">
       <header className="section-header-bar">
@@ -228,6 +227,17 @@ function Members({ members, onInvite }) {
                 <span className="member-role">{m.role}</span>
               </div>
               <span className={`status-badge ${m.status}`}>{m.status}</span>
+              {isAdmin && m.contact !== currentUserEmail && (
+                <select
+                  className="role-select"
+                  value={m.role}
+                  onChange={(e) => onRoleChange(m._id, e.target.value)}
+                  aria-label={`Change role for ${m.name}`}
+                >
+                  <option value="Treasurer">Treasurer</option>
+                  <option value="Member">Member</option>
+                </select>
+              )}
             </li>
           ))}
         </ul>
@@ -239,13 +249,15 @@ function Members({ members, onInvite }) {
 // ── Payouts ───────────────────────────────────────────────────────────────────
 function Payouts({ members, group, onReorder }) {
   const dragRef = useRef(null);
-  const pool =
+  const isFIFO  = group?.payoutMethod === "Fixed Order (Roster)";
+  const pool    =
     group?.amount && members.length
       ? `R ${(Number(group.amount) * members.length).toLocaleString()}`
       : "—";
 
   const handleDragStart = (i) => { dragRef.current = i; };
   const handleDrop = (i) => {
+    if (isFIFO) return; // block reordering for FIFO
     if (dragRef.current === null || dragRef.current === i) return;
     const reordered = [...members];
     const [moved] = reordered.splice(dragRef.current, 1);
@@ -258,8 +270,45 @@ function Payouts({ members, group, onReorder }) {
     <section aria-labelledby="payouts-heading">
       <header className="section-header-bar">
         <h2 id="payouts-heading">Payout Roster</h2>
-        <span className="hint">Drag to reorder</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {/* Payout method badge */}
+          <span className="payout-method-badge">
+            {group?.payoutMethod === "Fixed Order (Roster)" && "📋 Fixed Roster"}
+            {group?.payoutMethod === "Lucky Draw"           && "🎲 Lucky Draw"}
+            {group?.payoutMethod === "Need-Based (Vote)"   && "🗳️ Need-Based"}
+            {!group?.payoutMethod                          && "—"}
+          </span>
+          {!isFIFO && <span className="hint">Drag to reorder</span>}
+        </div>
       </header>
+
+      {/* Payout method info box */}
+      <div className="payout-method-info card" style={{ marginBottom: 20 }}>
+        {group?.payoutMethod === "Fixed Order (Roster)" && (
+          <p style={{ margin: 0, fontSize: 13, color: "var(--text-dim)" }}>
+            🔒 <strong>Fixed Roster (FIFO)</strong> — Members are paid in the order they joined.
+            This order cannot be changed to keep things fair for everyone.
+          </p>
+        )}
+        {group?.payoutMethod === "Lucky Draw" && (
+          <p style={{ margin: 0, fontSize: 13, color: "var(--text-dim)" }}>
+            🎲 <strong>Lucky Draw</strong> — Drag to set a preferred order, or the winner will be
+            drawn randomly each cycle. Contact your admin to confirm the draw process.
+          </p>
+        )}
+        {group?.payoutMethod === "Need-Based (Vote)" && (
+          <p style={{ margin: 0, fontSize: 13, color: "var(--text-dim)" }}>
+            🗳️ <strong>Need-Based (Vote)</strong> — The payout recipient is decided by group vote
+            each cycle. Drag to suggest a preferred order. Final decision is made at the meeting.
+          </p>
+        )}
+        {!group?.payoutMethod && (
+          <p style={{ margin: 0, fontSize: 13, color: "var(--text-dim)" }}>
+            ⚠️ No payout method set. Please configure the group settings.
+          </p>
+        )}
+      </div>
+
       {members.length === 0 ? (
         <p className="empty-state">No members added yet.</p>
       ) : (
@@ -267,11 +316,11 @@ function Payouts({ members, group, onReorder }) {
           {members.map((m, i) => (
             <li
               key={m._id}
-              className="payout-row"
-              draggable
-              onDragStart={() => handleDragStart(i)}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => handleDrop(i)}
+              className={`payout-row${isFIFO ? " fifo-locked" : ""}`}
+              draggable={!isFIFO}
+              onDragStart={() => !isFIFO && handleDragStart(i)}
+              onDragOver={(e) => !isFIFO && e.preventDefault()}
+              onDrop={() => !isFIFO && handleDrop(i)}
             >
               <span className="payout-num">{String(i + 1).padStart(2, "0")}</span>
               <div className="payout-avatar">{m.initials}</div>
@@ -280,8 +329,15 @@ function Payouts({ members, group, onReorder }) {
                 <span>{m.role}</span>
               </div>
               <span className="payout-amount">{pool}</span>
-              <span className="payout-status">Pending</span>
-              <span className="drag-handle" aria-hidden="true">⠿</span>
+              <span className="payout-status">
+                {i === 0 ? (
+                  <span className="status-badge active">Next Up</span>
+                ) : (
+                  <span className="status-badge pending">Pending</span>
+                )}
+              </span>
+              {!isFIFO && <span className="drag-handle" aria-hidden="true">⠿</span>}
+              {isFIFO  && <span className="fifo-lock-icon" aria-label="Locked — FIFO order">🔒</span>}
             </li>
           ))}
         </ol>
@@ -303,7 +359,7 @@ function Meetings({ meetings, onAddMeeting }) {
           <caption className="sr-only">Scheduled meetings</caption>
           <thead>
             <tr>
-              {["#","Date","Time","Venue","Status","Notes"].map((h) => (
+              {["#", "Date", "Time", "Venue", "Status", "Notes"].map((h) => (
                 <th key={h} scope="col">{h}</th>
               ))}
             </tr>
@@ -330,38 +386,42 @@ function Meetings({ meetings, onAddMeeting }) {
   );
 }
 
-function Contributions({ contributions, members, group, onPay, loading }) {
-  const month = currentMonth()
-
-  // Which members have paid this month
+// ── Contributions ─────────────────────────────────────────────────────────────
+function Contributions({ contributions, members, group, onPay, loading, onFlagMissing }) {
+  const month = currentMonth();
   const paidMemberIds = new Set(
     contributions
       .filter((c) => c.month === month && c.status === "paid")
       .map((c) => c.member?._id || c.member)
-  )
-
-  const totalExpected  = group.amount && members.length
-    ? Number(group.amount) * members.length : 0
+  );
+  const totalExpected  = group.amount && members.length ? Number(group.amount) * members.length : 0;
   const totalCollected = contributions
     .filter((c) => c.month === month && c.status === "paid")
-    .reduce((sum, c) => sum + c.amount, 0)
-  const progress = totalExpected ? Math.round((totalCollected / totalExpected) * 100) : 0
+    .reduce((sum, c) => sum + c.amount, 0);
+  const progress = totalExpected ? Math.round((totalCollected / totalExpected) * 100) : 0;
+  const hasTreasurer = members.some((m) => m.role === "Treasurer");
 
   return (
     <section aria-labelledby="contributions-heading">
       <header className="section-header-bar">
         <h2 id="contributions-heading">Contributions</h2>
-        <span className="month-label">{formatMonth(month)}</span>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <span className="month-label">{formatMonth(month)}</span>
+          {hasTreasurer && (
+            <button className="btn-secondary" onClick={onFlagMissing}>
+              Flag Unpaid
+            </button>
+          )}
+        </div>
       </header>
 
-      {/* Progress bar */}
       <div className="contribution-summary card" style={{ marginBottom: 24 }}>
         <div className="contrib-summary-row">
           <div>
             <div className="stat-label">Collected This Month</div>
             <div className="stat-value" style={{ fontSize: 22 }}>
               R {totalCollected.toLocaleString()}
-              <span style={{ fontSize: 13, color: "var(--text-muted)", fontFamily: "var(--font-body)", fontWeight: 400 }}>
+              <span style={{ fontSize: 13, color: "var(--text-muted)", fontWeight: 400 }}>
                 {" "}/ R {totalExpected.toLocaleString()}
               </span>
             </div>
@@ -382,16 +442,15 @@ function Contributions({ contributions, members, group, onPay, loading }) {
         </div>
       </div>
 
-      {/* Member payment status list */}
       {members.length === 0 ? (
         <p className="empty-state">No members yet. Invite members first.</p>
       ) : (
         <ul className="contributions-list" aria-label="Member contribution status">
           {members.map((m) => {
-            const hasPaid   = paidMemberIds.has(m._id)
-            const record    = contributions.find(
+            const hasPaid = paidMemberIds.has(m._id);
+            const record  = contributions.find(
               (c) => (c.member?._id || c.member) === m._id && c.month === month && c.status === "paid"
-            )
+            );
             return (
               <li key={m._id} className={`contribution-row${hasPaid ? " paid" : ""}`}>
                 <div className="payout-avatar">{m.initials}</div>
@@ -399,7 +458,6 @@ function Contributions({ contributions, members, group, onPay, loading }) {
                   <strong>{m.name}</strong>
                   <span>{m.role}</span>
                 </div>
-
                 {hasPaid ? (
                   <div className="contrib-paid-info">
                     <span className="status-badge active">✓ Paid</span>
@@ -409,22 +467,17 @@ function Contributions({ contributions, members, group, onPay, loading }) {
                 ) : (
                   <div className="contrib-actions">
                     <span className="status-badge pending">Unpaid</span>
-                    <button
-                      className="btn-pay"
-                      onClick={() => onPay(m)}
-                      disabled={loading}
-                    >
+                    <button className="btn-pay" onClick={() => onPay(m)} disabled={loading}>
                       Pay R{group.amount}
                     </button>
                   </div>
                 )}
               </li>
-            )
+            );
           })}
         </ul>
       )}
 
-      {/* Payment history */}
       {contributions.length > 0 && (
         <div style={{ marginTop: 32 }}>
           <h3 className="card-title">Payment History</h3>
@@ -433,7 +486,7 @@ function Contributions({ contributions, members, group, onPay, loading }) {
               <caption className="sr-only">Contribution history</caption>
               <thead>
                 <tr>
-                  {["Member","Month","Amount","Reference","Status","Date"].map((h) => (
+                  {["Member", "Month", "Amount", "Reference", "Status", "Date"].map((h) => (
                     <th key={h} scope="col">{h}</th>
                   ))}
                 </tr>
@@ -455,20 +508,18 @@ function Contributions({ contributions, members, group, onPay, loading }) {
         </div>
       )}
     </section>
-  )
-} // End of Contributions section
+  );
+}
 
-// ── Disbursements section (Treasurer) ─────────────────────────────────────────
+// ── Disbursements ─────────────────────────────────────────────────────────────
 function Disbursements({ disbursements, members, group, contributions, onDisburse, onMarkPaid, loading }) {
-  const month = currentMonth()
-
+  const month = currentMonth();
   const totalCollected = contributions
     .filter((c) => c.month === month && c.status === "paid")
-    .reduce((sum, c) => sum + c.amount, 0)
-
+    .reduce((sum, c) => sum + c.amount, 0);
   const disbursedMemberIds = new Set(
     disbursements.map((d) => d.member?._id || d.member)
-  )
+  );
 
   return (
     <section aria-labelledby="disbursements-heading">
@@ -477,7 +528,6 @@ function Disbursements({ disbursements, members, group, contributions, onDisburs
         <span className="month-label">{formatMonth(month)}</span>
       </header>
 
-      {/* Pool summary */}
       <div className="card contribution-summary" style={{ marginBottom: 24 }}>
         <div className="contrib-summary-row">
           <div>
@@ -486,7 +536,8 @@ function Disbursements({ disbursements, members, group, contributions, onDisburs
               R {totalCollected.toLocaleString()}
             </div>
             <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
-              collected this month from {contributions.filter(c => c.month === month && c.status === "paid").length} members
+              collected this month from{" "}
+              {contributions.filter((c) => c.month === month && c.status === "paid").length} members
             </div>
           </div>
           <div style={{ textAlign: "right" }}>
@@ -498,14 +549,13 @@ function Disbursements({ disbursements, members, group, contributions, onDisburs
         </div>
       </div>
 
-      {/* Members — initiate payout */}
       {members.length === 0 ? (
         <p className="empty-state">No members yet.</p>
       ) : (
         <ul className="contributions-list" aria-label="Disbursement roster">
           {members.map((m, i) => {
-            const disbursed = disbursedMemberIds.has(m._id)
-            const record    = disbursements.find((d) => (d.member?._id || d.member) === m._id)
+            const disbursed = disbursedMemberIds.has(m._id);
+            const record    = disbursements.find((d) => (d.member?._id || d.member) === m._id);
             return (
               <li key={m._id} className={`contribution-row${disbursed ? " paid" : ""}`}>
                 <span className="payout-num">{String(i + 1).padStart(2, "0")}</span>
@@ -514,7 +564,6 @@ function Disbursements({ disbursements, members, group, contributions, onDisburs
                   <strong>{m.name}</strong>
                   <span>{m.role}</span>
                 </div>
-
                 {disbursed ? (
                   <div className="contrib-paid-info">
                     <span className={`status-badge ${record.status}`}>{record.status}</span>
@@ -543,12 +592,11 @@ function Disbursements({ disbursements, members, group, contributions, onDisburs
                   </div>
                 )}
               </li>
-            )
+            );
           })}
         </ul>
       )}
 
-      {/* Disbursement history */}
       {disbursements.length > 0 && (
         <div style={{ marginTop: 32 }}>
           <h3 className="card-title">Disbursement History</h3>
@@ -557,7 +605,7 @@ function Disbursements({ disbursements, members, group, contributions, onDisburs
               <caption className="sr-only">Disbursement history</caption>
               <thead>
                 <tr>
-                  {["Member","Month","Amount","Reference","Status","Note"].map((h) => (
+                  {["Member", "Month", "Amount", "Reference", "Status", "Note"].map((h) => (
                     <th key={h} scope="col">{h}</th>
                   ))}
                 </tr>
@@ -579,22 +627,25 @@ function Disbursements({ disbursements, members, group, contributions, onDisburs
         </div>
       )}
     </section>
-  )
-} // End of Disbursements section
+  );
+}
 
 // ── Nav ───────────────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
-  { id: "groups",    icon: "⌂", label: "My Groups" },
-  { id: "members",   icon: "⬡", label: "Members" },
-  { id: "payouts",   icon: "◎", label: "Payout Order" },
-  { id: "meetings",  icon: "◷", label: "Meetings" },
+  { id: "groups",        icon: "⌂", label: "My Groups" },
+  { id: "members",       icon: "⬡", label: "Members" },
+  { id: "payouts",       icon: "◎", label: "Payout Order" },
+  { id: "meetings",      icon: "◷", label: "Meetings" },
   { id: "contributions", icon: "₴", label: "Contributions" },
   { id: "disbursements", icon: "◈", label: "Disbursements" },
-
 ];
 
 // ── Root ──────────────────────────────────────────────────────────────────────
 export default function Group() {
+  const currentUser      = JSON.parse(localStorage.getItem("user") || "{}");
+  const currentUserEmail = currentUser.email || currentUser.user?.email || "";
+  const currentUsername  = currentUser.username || currentUser.user?.username || "";
+
   const [activeSection,  setActiveSection]  = useState("groups");
   const [groups,         setGroups]         = useState([]);
   const [selectedGroup,  setSelectedGroup]  = useState(null);
@@ -605,23 +656,22 @@ export default function Group() {
   const [toast,          setToast]          = useState("");
   const [inviteModal,    setInviteModal]    = useState(false);
   const [meetingModal,   setMeetingModal]   = useState(false);
-
-  const [inviteName,    setInviteName]    = useState("");
-  const [inviteContact, setInviteContact] = useState("");
-  const [meetDate,      setMeetDate]      = useState("");
-  const [meetTime,      setMeetTime]      = useState("");
-  const [meetVenue,     setMeetVenue]     = useState("");
-  const [meetNotes,     setMeetNotes]     = useState("");
-  const [contributions,  setContributions]  = useState([])
-  const [disbursements,  setDisbursements]  = useState([])
-  const [payLoading,     setPayLoading]     = useState(false)
+  const [inviteName,     setInviteName]     = useState("");
+  const [inviteContact,  setInviteContact]  = useState("");
+  const [meetDate,       setMeetDate]       = useState("");
+  const [meetTime,       setMeetTime]       = useState("");
+  const [meetVenue,      setMeetVenue]      = useState("");
+  const [meetNotes,      setMeetNotes]      = useState("");
+  const [contributions,  setContributions]  = useState([]);
+  const [disbursements,  setDisbursements]  = useState([]);
+  const [payLoading,     setPayLoading]     = useState(false);
 
   const showToast = useCallback((msg) => {
     setToast(msg);
-    setTimeout(() => setToast(""), 3000);
+    setTimeout(() => setToast(""), 3500);
   }, []);
 
-  // Load all groups on mount
+  // Load groups on mount
   useEffect(() => {
     axios.get(`${API}/api/groups`, { headers: authHeader() })
       .then((r) => setGroups(r.data))
@@ -629,7 +679,7 @@ export default function Group() {
       .finally(() => setLoadingGroups(false));
   }, []);
 
-  // Load members + meetings when a group is selected
+  // Load group data when selected
   useEffect(() => {
     if (!selectedGroup) return;
     const h = { headers: authHeader() };
@@ -648,22 +698,35 @@ export default function Group() {
       .catch(() => showToast("Failed to load group data"));
   }, [selectedGroup]);
 
+  // Handle PayFast return
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const payment = params.get("payment")
-    const ref     = params.get("ref")
+    const params  = new URLSearchParams(window.location.search);
+    const payment = params.get("payment");
+    const ref     = params.get("ref");
+
     if (payment === "success") {
-      showToast(`✓ Payment successful! Ref: ${ref}`)
-      if (selectedGroup) {
-        axios.get(`${API}/api/payfast/contributions?groupId=${selectedGroup._id}`, { headers: authHeader() })
-          .then((r) => setContributions(r.data))
-      }
-      window.history.replaceState({}, "", window.location.pathname)
+      showToast(`✓ Payment successful! Ref: ${ref}`);
+      window.history.replaceState({}, "", window.location.pathname);
+      let attempts = 0;
+      const interval = setInterval(async () => {
+        attempts++;
+        try {
+          if (selectedGroup) {
+            const r = await axios.get(
+              `${API}/api/payfast/contributions?groupId=${selectedGroup._id}`,
+              { headers: authHeader() }
+            );
+            setContributions(r.data);
+            const paid = r.data.find((c) => c.reference === ref && c.status === "paid");
+            if (paid || attempts >= 5) clearInterval(interval);
+          }
+        } catch { clearInterval(interval); }
+      }, 3000);
     } else if (payment === "cancelled") {
-      showToast("Payment was cancelled")
-      window.history.replaceState({}, "", window.location.pathname)
+      showToast("Payment was cancelled");
+      window.history.replaceState({}, "", window.location.pathname);
     }
-  }, [selectedGroup])
+  }, [selectedGroup]);
 
   function handleSelectGroup(g) {
     setSelectedGroup(g);
@@ -675,6 +738,33 @@ export default function Group() {
     setMembers([]);
     setMeetings([]);
     setActiveSection("groups");
+  }
+
+  async function handleRoleChange(memberId, newRole) {
+    try {
+      const { data } = await axios.patch(
+        `${API}/api/members/${memberId}/role`,
+        { role: newRole },
+        { headers: authHeader() }
+      );
+      setMembers((prev) => prev.map((m) => m._id === memberId ? { ...m, role: data.role } : m));
+      showToast(`✓ Role updated to ${newRole}`);
+    } catch (err) {
+      showToast("Failed to update role: " + (err.response?.data?.error || err.message));
+    }
+  }
+
+  async function handleFlagMissing() {
+    try {
+      const { data } = await axios.post(
+        `${API}/api/flag-missing`,
+        { groupId: selectedGroup._id, month: currentMonth() },
+        { headers: authHeader() }
+      );
+      showToast(`✓ ${data.message}`);
+    } catch (err) {
+      showToast("Failed: " + (err.response?.data?.error || err.message));
+    }
   }
 
   async function saveGroup(form) {
@@ -734,44 +824,37 @@ export default function Group() {
         { order: reordered.map((m, i) => ({ id: m._id, slot: i + 1 })) },
         { headers: authHeader() }
       );
-    } catch {
-      showToast("Failed to save order");
-    }
+    } catch { showToast("Failed to save order"); }
   }
 
   async function handlePay(member) {
-    setPayLoading(true)
+    setPayLoading(true);
     try {
       const { data } = await axios.post(
         `${API}/api/payfast/contribute`,
         { groupId: selectedGroup._id, memberId: member._id },
         { headers: authHeader() }
-      )
-      // Redirect member to PayFast payment page
-      window.location.href = data.paymentUrl
+      );
+      window.location.href = data.paymentUrl;
     } catch (err) {
-      showToast("Payment error: " + (err.response?.data?.error || err.message))
-    } finally {
-      setPayLoading(false)
-    }
-  }  // This is a placeholder function. In a real app, you'd handle the PayFast response and update contributions/disbursements accordingly.
+      showToast("Payment error: " + (err.response?.data?.error || err.message));
+    } finally { setPayLoading(false); }
+  }
 
   async function handleDisburse(member) {
-    setPayLoading(true)
+    setPayLoading(true);
     try {
       const { data } = await axios.post(
         `${API}/api/payfast/disburse`,
         { groupId: selectedGroup._id, memberId: member._id },
         { headers: authHeader() }
-      )
-      setDisbursements((prev) => [data.disbursement, ...prev])
-      showToast(data.message)
+      );
+      setDisbursements((prev) => [data.disbursement, ...prev]);
+      showToast(data.message);
     } catch (err) {
-      showToast("Error: " + (err.response?.data?.error || err.message))
-    } finally {
-      setPayLoading(false)
-    }
-  } // This is a placeholder function. In a real app, you'd handle the PayFast response and update contributions/disbursements accordingly.
+      showToast("Error: " + (err.response?.data?.error || err.message));
+    } finally { setPayLoading(false); }
+  }
 
   async function handleMarkPaid(disbursementId) {
     try {
@@ -779,20 +862,22 @@ export default function Group() {
         `${API}/api/payfast/disburse/${disbursementId}`,
         {},
         { headers: authHeader() }
-      )
-      setDisbursements((prev) => prev.map((d) => d._id === disbursementId ? data : d))
-      showToast("✓ Payout marked as paid")
+      );
+      setDisbursements((prev) => prev.map((d) => d._id === disbursementId ? data : d));
+      showToast("✓ Payout marked as paid");
     } catch (err) {
-      showToast("Error: " + (err.response?.data?.error || err.message))
+      showToast("Error: " + (err.response?.data?.error || err.message));
     }
-  } // This is a placeholder function. In a real app, you'd handle the PayFast response and update the disbursement status accordingly.
+  }
 
   const topbarTitle =
     activeSection === "groups"    ? "My Stokvels" :
     activeSection === "dashboard" ? selectedGroup?.name :
     NAV_ITEMS.find((n) => n.id === activeSection)?.label || "";
 
-  // Show create group form fullscreen
+  // Get the current user's role in the selected group
+  const myMemberRole = members.find((m) => m.contact === currentUserEmail)?.role || "Member";
+
   if (showGroupForm) {
     return (
       <div className="app-layout">
@@ -817,7 +902,6 @@ export default function Group() {
 
   return (
     <div className="app-layout">
-
       <aside className="sidebar" aria-label="Main navigation">
         <div className="sidebar-logo" aria-hidden="true">
           <span className="logo-icon">◈</span>
@@ -826,12 +910,15 @@ export default function Group() {
 
         <nav aria-label="Sections">
           <ul className="sidebar-nav">
-            {/* Always show My Groups; only show group-specific nav if a group is selected */}
             {NAV_ITEMS.filter((n) => n.id === "groups" || selectedGroup).map((item) => (
               <li key={item.id}>
                 <a
                   href={`#${item.id}`}
-                  className={`nav-item${activeSection === item.id || (item.id === "groups" && activeSection === "dashboard") ? " active" : ""}`}
+                  className={`nav-item${
+                    activeSection === item.id ||
+                    (item.id === "groups" && activeSection === "dashboard")
+                      ? " active" : ""
+                  }`}
                   aria-current={activeSection === item.id ? "page" : undefined}
                   onClick={(e) => {
                     e.preventDefault();
@@ -847,8 +934,22 @@ export default function Group() {
           </ul>
         </nav>
 
+        {/* Sidebar footer — shows logged-in user */}
         <footer className="sidebar-footer">
-          <span className="admin-badge">ADMIN</span>
+          <div className="sidebar-user">
+            <div className="sidebar-user-avatar">
+              {getInitials(currentUsername || currentUserEmail || "U")}
+            </div>
+            <div className="sidebar-user-info">
+              <span className="sidebar-user-name">
+                {currentUsername || "User"}
+              </span>
+              <span className="sidebar-user-email">{currentUserEmail}</span>
+            </div>
+            <span className={`sidebar-role-badge ${myMemberRole.toLowerCase()}`}>
+              {myMemberRole}
+            </span>
+          </div>
         </footer>
       </aside>
 
@@ -884,7 +985,12 @@ export default function Group() {
           </div>
 
           <div hidden={activeSection !== "members"}>
-            <Members members={members} onInvite={() => setInviteModal(true)} />
+            <Members
+              members={members}
+              onInvite={() => setInviteModal(true)}
+              onRoleChange={handleRoleChange}
+              currentUserEmail={currentUserEmail}
+            />
           </div>
 
           <div hidden={activeSection !== "payouts"}>
@@ -901,9 +1007,11 @@ export default function Group() {
               members={members}
               group={selectedGroup || {}}
               onPay={handlePay}
+              onFlagMissing={handleFlagMissing}
               loading={payLoading}
             />
           </div>
+
           <div hidden={activeSection !== "disbursements"}>
             <Disbursements
               disbursements={disbursements}
@@ -932,9 +1040,9 @@ export default function Group() {
           <input id="invite-name" type="text" value={inviteName}
             onChange={(e) => setInviteName(e.target.value)} placeholder="e.g. Zanele Dlamini" />
         </Field>
-        <Field label="Phone / Email" htmlFor="invite-contact">
-          <input id="invite-contact" type="text" value={inviteContact}
-            onChange={(e) => setInviteContact(e.target.value)} placeholder="e.g. 082 000 0000" />
+        <Field label="Email Address" htmlFor="invite-contact">
+          <input id="invite-contact" type="email" value={inviteContact}
+            onChange={(e) => setInviteContact(e.target.value)} placeholder="e.g. zanele@email.com" />
         </Field>
       </Modal>
 

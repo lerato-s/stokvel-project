@@ -1,30 +1,65 @@
-// GroupForm.jsx
 import { useState } from "react";
 import "../pages/group.css";
 
-
-const FREQ_OPTIONS     = ["Monthly", "Weekly", "Bi-weekly"];
-const CYCLE_OPTIONS    = ["6 Months", "12 Months", "18 Months", "24 Months"];
-const MEET_FREQ        = ["Weekly", "Monthly", "Quarterly"];
-const DAYS             = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
-const WEEKS            = ["1st","2nd","3rd","4th","Last"];
-const PAYOUT_METHODS   = ["Fixed Order (Roster)", "Lucky Draw", "Need-Based (Vote)"];
+const FREQ_OPTIONS = ["Monthly", "Weekly", "Bi-weekly"];
+const CYCLE_OPTIONS = ["6 Months", "12 Months", "18 Months", "24 Months"];
+const MEET_FREQ = ["Weekly", "Monthly", "Quarterly"];
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const WEEKS = ["1st", "2nd", "3rd", "4th", "Last"];
+const PAYOUT_METHODS = ["Fixed Order (First In First Out)"];
 
 const EMPTY_FORM = {
-  name: "", amount: "", freq: "", cycle: "", max: "",
-  meetFreq: "", meetDay: "", meetWeek: "", payoutMethod: "", rules: "",
+  name: "",
+  amount: "",
+  freq: "",
+  cycle: "",
+  max: "",
+  meetFreq: "",
+  meetDay: "",
+  meetWeek: "",
+  payoutMethod: "",
+  rules: "",
 };
 
-export default function GroupForm({ initialValues = {}, onSave }) {
+export default function GroupForm({ initialValues = {}, onSave, isSaving = false, error = "" }) {
   const [form, setForm] = useState({ ...EMPTY_FORM, ...initialValues });
 
-  const set = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
-  const setDirect = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  const set = (key) => (e) =>
+    setForm((prev) => ({ ...prev, [key]: e.target.value }));
+
+  const setDirect = (key, value) =>
+    setForm((prev) => ({ ...prev, [key]: value }));
 
   function handleSubmit(e) {
     e.preventDefault();
-    if (!form.name.trim()) return;
-    onSave(form);
+
+    const requiredFields = [
+      "name",
+      "amount",
+      "freq",
+      "cycle",
+      "max",
+      "meetFreq",
+      "meetDay",
+      "meetWeek",
+      "payoutMethod",
+      "rules",
+    ];
+
+    const hasEmptyField = requiredFields.some(
+      (field) => !String(form[field]).trim()
+    );
+
+    if (hasEmptyField) {
+      alert("Please fill in all fields before saving.");
+      return;
+    }
+
+    onSave({
+      ...form,
+      amount: Number(form.amount),
+      max: Number(form.max),
+    });
   }
 
   function handleReset() {
@@ -38,9 +73,13 @@ export default function GroupForm({ initialValues = {}, onSave }) {
         <p>Set up the rules of your group. These will be visible to all members.</p>
       </header>
 
-      <form className="stokvel-form" onSubmit={handleSubmit} noValidate>
+      {error && (
+        <p style={{ color: "red", marginBottom: "1rem" }}>
+          {error}
+        </p>
+      )}
 
-        {/* ── Group identity ── */}
+      <form className="stokvel-form" onSubmit={handleSubmit} noValidate>
         <fieldset>
           <legend>Group Identity</legend>
 
@@ -58,7 +97,6 @@ export default function GroupForm({ initialValues = {}, onSave }) {
           </div>
         </fieldset>
 
-        {/* ── Contributions ── */}
         <fieldset>
           <legend>Contributions</legend>
 
@@ -79,7 +117,11 @@ export default function GroupForm({ initialValues = {}, onSave }) {
               <label htmlFor="contribution-freq">Frequency</label>
               <select id="contribution-freq" value={form.freq} onChange={set("freq")}>
                 <option value="">— Select —</option>
-                {FREQ_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                {FREQ_OPTIONS.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -87,7 +129,11 @@ export default function GroupForm({ initialValues = {}, onSave }) {
               <label htmlFor="cycle-duration">Cycle Duration</label>
               <select id="cycle-duration" value={form.cycle} onChange={set("cycle")}>
                 <option value="">— Select —</option>
-                {CYCLE_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                {CYCLE_OPTIONS.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -105,7 +151,6 @@ export default function GroupForm({ initialValues = {}, onSave }) {
           </div>
         </fieldset>
 
-        {/* ── Meetings ── */}
         <fieldset>
           <legend>Meeting Schedule</legend>
 
@@ -114,7 +159,11 @@ export default function GroupForm({ initialValues = {}, onSave }) {
               <label htmlFor="meet-freq">Meeting Frequency</label>
               <select id="meet-freq" value={form.meetFreq} onChange={set("meetFreq")}>
                 <option value="">— Select —</option>
-                {MEET_FREQ.map((o) => <option key={o} value={o}>{o}</option>)}
+                {MEET_FREQ.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -122,7 +171,11 @@ export default function GroupForm({ initialValues = {}, onSave }) {
               <label htmlFor="meet-day">Meeting Day</label>
               <select id="meet-day" value={form.meetDay} onChange={set("meetDay")}>
                 <option value="">— Select —</option>
-                {DAYS.map((o) => <option key={o} value={o}>{o}</option>)}
+                {DAYS.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -130,13 +183,16 @@ export default function GroupForm({ initialValues = {}, onSave }) {
               <label htmlFor="meet-week">Week of Month</label>
               <select id="meet-week" value={form.meetWeek} onChange={set("meetWeek")}>
                 <option value="">— Select —</option>
-                {WEEKS.map((o) => <option key={o} value={o}>{o}</option>)}
+                {WEEKS.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
         </fieldset>
 
-        {/* ── Payout ── */}
         <fieldset>
           <legend>Payout Method</legend>
 
@@ -159,7 +215,6 @@ export default function GroupForm({ initialValues = {}, onSave }) {
           </div>
         </fieldset>
 
-        {/* ── Rules ── */}
         <fieldset>
           <legend>Rules &amp; Notes</legend>
 
@@ -176,10 +231,14 @@ export default function GroupForm({ initialValues = {}, onSave }) {
         </fieldset>
 
         <div className="form-actions">
-          <button type="submit" className="btn-primary">Save Configuration</button>
-          <button type="button" className="btn-ghost" onClick={handleReset}>Reset</button>
-        </div>
+          <button type="submit" className="btn-primary" disabled={isSaving}>
+            {isSaving ? "Saving..." : "Save Configuration"}
+          </button>
 
+          <button type="button" className="btn-ghost" onClick={handleReset} disabled={isSaving}>
+            Reset
+          </button>
+        </div>
       </form>
     </section>
   );
