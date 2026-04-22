@@ -43,11 +43,11 @@ function Login() {
       localStorage.setItem("role", user.role);
 
         
-      if (result.data.message === "Successfully logged in"){
-        if (role === "member") {
+     // if (result.data.message === "Successfully logged in"){
+       // if (role === "member") {
            navigate("/group");
-        }
-    }
+       // }
+    //}
 
   }catch (error) {
       console.error("Error logging in:", error);
