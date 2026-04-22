@@ -5,7 +5,7 @@ import Login from './pages/Login'
 import Group from './pages/group'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
-import CreateGroup from './pages/CreateGroup'
+//import CreateGroup from './pages/CreateGroup'
 import Home from './pages/Home'
 
 
@@ -22,7 +22,6 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/group" element={<Group />} />
-          <Route path="/create-group" element={<CreateGroup />} />
           <Route path="/home" element={<Home />} />
       </Routes>
     </BrowserRouter>
