@@ -98,7 +98,7 @@ beforeAll(async () => {
   app = express()
   app.use(express.json())
   app.use(express.urlencoded({ extended: false }))
-  const payfastRoutes = require("./payfastRoutes")
+  const payfastRoutes = require("../routes/payfastRoutes")
   app.use("/api/payfast", payfastRoutes)
 })
 

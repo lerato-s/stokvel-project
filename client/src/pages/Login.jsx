@@ -23,7 +23,7 @@ function Login() {
     setErrorMessage("");
 
     try {
-      const result = await axios.post(`${import.meta.env.VITE_API_URL}/login`, {
+      const result = await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
         email,
         password
       }, 
@@ -36,18 +36,18 @@ function Login() {
       const user = result.data;
       const role = user.role;
 
+      localStorage.setItem("user", JSON.stringify(user));
       localStorage.setItem("token", user.token);        // VERY IMPORTANT
       localStorage.setItem("userId", user.id);
       localStorage.setItem("username", user.username);
       localStorage.setItem("role", user.role);
 
-      localStorage.setItem("user", JSON.stringify(user));
         
-      if (result.data.message === "Successfully logged in"){
-        if (role === "member") {
+     // if (result.data.message === "Successfully logged in"){
+       // if (role === "member") {
            navigate("/group");
-        }
-    }
+       // }
+    //}
 
   }catch (error) {
       console.error("Error logging in:", error);

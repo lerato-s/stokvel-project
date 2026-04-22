@@ -1,40 +1,10 @@
 const mongoose = require("mongoose");
+const memberSchema = require("./member"); // import member schema
 
-const memberSchema = new mongoose.Schema(
-  {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Users",
-      required: true
-    },
-    username: {
-      type: String,
-      required: true
-    },
-    email: {
-      type: String,
-      required: true
-    },
-    role: {
-      type: String,
-      enum: ["admin", "member", "treasurer"],
-      default: "member"
-    },
-    joinedAt: {
-      type: Date,
-      default: Date.now
-    },
-    isActive: {
-      type: Boolean,
-      default: true
-    }
-  },
-  { _id: false }
-);
-
+// Main group schema
 const GroupSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true },
+    name: { type: String, required: true, trim: true },
     amount: { type: Number, required: true },
     freq: { type: String, required: true },
     cycle: { type: String, required: true },
@@ -48,37 +18,38 @@ const GroupSchema = new mongoose.Schema(
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Users",
-      required: true
+      required: true // creator id
     },
 
     adminId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Users",
-      required: true
+      required: true // current admin id
     },
 
     members: {
-      type: [memberSchema],
+      type: [memberSchema], // embedded members array
       default: []
     },
 
     nextPayoutIndex: {
       type: Number,
-      default: 0
+      default: 0 // tracks FIFO position
     },
 
     totalPayoutsCompleted: {
       type: Number,
-      default: 0
+      default: 0 // completed payouts
     }
   },
-  { timestamps: true }
+  { timestamps: true } // adds createdAt and updatedAt
 );
 
+// FIFO ordering method
 GroupSchema.methods.getFIFOOrder = function () {
   return this.members
-    .filter((m) => m.isActive)
-    .sort((a, b) => new Date(a.joinedAt) - new Date(b.joinedAt));
+    .filter((m) => m.isActive) // only active members
+    .sort((a, b) => new Date(a.joinedAt) - new Date(b.joinedAt)); // earliest first
 };
 
 module.exports = mongoose.model("Group", GroupSchema);
