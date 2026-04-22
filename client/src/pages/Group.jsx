@@ -6,13 +6,7 @@ import "./Group.css";
 const API = import.meta.env.VITE_API_URL;
 
 function authHeader() {
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const token =
-    localStorage.getItem("token") ||
-    user.token ||
-    user.accessToken ||
-    user.user?.token;
-
+  const token = localStorage.getItem("token");
   if (token) return { Authorization: `Bearer ${token}` };
   return {};
 }
