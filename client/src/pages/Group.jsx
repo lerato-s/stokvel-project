@@ -1,19 +1,15 @@
 // Group.jsx
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect} from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import GroupForm from "../components/GroupForm";
-import "./Group.css";
+import "./group.css";
 
 const API = import.meta.env.VITE_API_URL;
 
 function authHeader() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const token =
-    localStorage.getItem("token") ||
-    user.token ||
-    user.accessToken ||
-    user.user?.token;
-
+  const token = user.token || user.accessToken || (user.user?.token);
   if (token) return { Authorization: `Bearer ${token}` };
   return {};
 }
@@ -85,8 +81,56 @@ function Field({ label, htmlFor, children }) {
   );
 }
 
+function PlatformLanding({ username, onNew }) {
+  return (
+    <section className="platform-landing" aria-labelledby="welcome-heading">
+      <div className="platform-welcome-card card">
+        <div className="platform-welcome-top">
+          <div className="platform-welcome-avatar">{getInitials(username || "◈")}</div>
+          <div>
+            <h2 id="welcome-heading">Welcome, {username || "there"}!</h2>
+            <p className="platform-welcome-sub">
+              You're registered on Stokvel Manager. Create or join a group to get started.
+            </p>
+          </div>
+        </div>
+
+        <div className="platform-stats-row">
+          <div className="platform-stat">
+            <span className="stat-label">Account Status</span>
+            <strong className="stat-value">Registered</strong>
+            <span className="platform-stat-hint">Email verified</span>
+          </div>
+          <div className="platform-stat">
+            <span className="stat-label">Groups</span>
+            <strong className="stat-value">0</strong>
+            <span className="platform-stat-hint">Not in any group yet</span>
+          </div>
+          <div className="platform-stat">
+            <span className="stat-label">Member Since</span>
+            <strong className="stat-value">
+              {new Date().toLocaleDateString("en-ZA", { month: "short", year: "numeric" })}
+            </strong>
+            <span className="platform-stat-hint">New member</span>
+          </div>
+        </div>
+
+        <div className="platform-actions">
+          <button className="btn-primary platform-cta" onClick={onNew}>
+            + Create New Group
+          </button>
+        </div>
+
+        <div className="platform-tip">
+          Tip: Create your own stokvel group, or ask a friend to invite you to theirs.
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ── Groups list ───────────────────────────────────────────────────────────────
-function GroupsList({ groups, loading, onSelect, onNew }) {
+function GroupsList({ groups, loading, onSelect, onNew,username }) {
   return (
     <section className="groups-list-page" aria-labelledby="groups-heading">
       <header className="groups-list-header">
@@ -96,10 +140,7 @@ function GroupsList({ groups, loading, onSelect, onNew }) {
       {loading ? (
         <p className="empty-state">Loading groups…</p>
       ) : groups.length === 0 ? (
-        <div className="empty-groups">
-          <p>You haven't created any stokvels yet.</p>
-          <button className="btn-primary" onClick={onNew}>Create your first group</button>
-        </div>
+        <PlatformLanding username={username} onNew={onNew} />
       ) : (
         <ul className="groups-cards" aria-label="Your stokvel groups">
           {groups.map((g) => (
@@ -352,34 +393,78 @@ function Payouts({ members, group, onReorder }) {
 }
 
 // ── Meetings ──────────────────────────────────────────────────────────────────
-function Meetings({ meetings, onAddMeeting }) {
+function Meetings({ meetings, onAddMeeting, onCompleteMeeting }) {
   return (
     <section aria-labelledby="meetings-heading">
       <header className="section-header-bar">
         <h2 id="meetings-heading">Meeting Schedule</h2>
-        <button className="btn-invite" onClick={onAddMeeting}>+ Add Meeting</button>
+        <button className="btn-invite" onClick={onAddMeeting}>
+          + Add Meeting
+        </button>
       </header>
+
       <div className="meetings-table-wrap">
         <table className="meetings-table">
           <caption className="sr-only">Scheduled meetings</caption>
+
           <thead>
             <tr>
-              {["#", "Date", "Time", "Venue", "Status", "Notes"].map((h) => (
-                <th key={h} scope="col">{h}</th>
-              ))}
+              {["#", "Date", "Time", "Venue", "Link", "Status", "Notes"].map(
+                (h) => (
+                  <th key={h} scope="col">
+                    {h}
+                  </th>
+                )
+              )}
             </tr>
           </thead>
+
           <tbody>
             {meetings.length === 0 ? (
-              <tr><td colSpan={6} className="empty-state">No meetings scheduled yet.</td></tr>
+              <tr>
+                <td colSpan={7} className="empty-state">
+                  No meetings scheduled yet.
+                </td>
+              </tr>
             ) : (
               meetings.map((m, i) => (
-                <tr key={m._id}>
+                <tr
+                  key={m._id}
+                  className="meeting-row"
+                  onClick={() => onCompleteMeeting(m)}
+                  style={{ cursor: "pointer" }}
+                >
                   <td>{i + 1}</td>
-                  <td><time dateTime={m.date}>{formatDate(m.date)}</time></td>
+
+                  <td>
+                    <time dateTime={m.date}>{formatDate(m.date)}</time>
+                  </td>
+
                   <td>{m.time || "—"}</td>
-                  <td>{m.venue}</td>
-                  <td><span className={`status-badge ${m.status}`}>{m.status}</span></td>
+
+                  <td>{m.venue || "—"}</td>
+
+                  <td>
+                    {m.link ? (
+                      <a
+                        href={m.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {m.link}
+                      </a>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+
+                  <td>
+                    <span className={`status-badge ${m.status}`}>
+                      {m.status}
+                    </span>
+                  </td>
+
                   <td>{m.notes || "—"}</td>
                 </tr>
               ))
@@ -666,6 +751,7 @@ export default function Group() {
   const [meetDate,       setMeetDate]       = useState("");
   const [meetTime,       setMeetTime]       = useState("");
   const [meetVenue,      setMeetVenue]      = useState("");
+  const [meetLink,       setMeetLink]       = useState("");
   const [meetNotes,      setMeetNotes]      = useState("");
   const [contributions,  setContributions]  = useState([]);
   const [disbursements,  setDisbursements]  = useState([]);
@@ -678,7 +764,7 @@ export default function Group() {
 
   // Load groups on mount
   useEffect(() => {
-    axios.get(`${API}/api/my-groups`, { headers: authHeader() })
+    axios.get(`${API}/api/groups`, { headers: authHeader() })
       .then((r) => setGroups(r.data))
       .catch(() => showToast("Failed to load groups"))
       .finally(() => setLoadingGroups(false));
@@ -772,59 +858,36 @@ export default function Group() {
     }
   }
 
-
-  //your backend create route is POST /groups, so with app.use("/api", groupRoutes) the frontend must call /api/groups
-  //your backend returns { success, message, group }, so you must use data.group, not data
-async function saveGroup(form) {
-  try {
-    const payload = {
-      ...form,
-      amount: Number(form.amount),
-      max: Number(form.max),
-    };
-
-    const { data } = await axios.post(
-      `${API}/api/groups`,
-      payload,
-      { headers: authHeader() }
-    );
-
-    setGroups((prev) => [data.group, ...prev]);
-    setShowGroupForm(false);
-    showToast(`✓ "${data.group.name}" created`);
-  } catch (err) {
-    showToast("Failed to save: " + (err.response?.data?.error || err.message));
-  }
-}
-
-//your embedded-members backend adds members through POST /groups/:groupId/members
-//it expects email and optional role
-//it returns the updated members array
-async function sendInvite() {
-  if (!inviteContact.trim()) {
-    showToast("Please enter an email");
-    return;
+  async function saveGroup(form) {
+    try {
+      const { data } = await axios.post(`${API}/api/group`, form, { headers: authHeader() });
+      setGroups((prev) => [data, ...prev]);
+      setShowGroupForm(false);
+      showToast(`✓ "${data.name}" created`);
+    } catch (err) {
+      showToast("Failed to save: " + (err.response?.data?.error || err.message));
+    }
   }
 
-  try {
-    const { data } = await axios.post(
-      `${API}/api/groups/${selectedGroup._id}/members`,
-      {
-        email: inviteContact,
-        role: "member"
-      },
-      { headers: authHeader() }
-    );
-
-    setMembers(data.members);
-    setInviteName("");
-    setInviteContact("");
-    setInviteModal(false);
-    showToast("✓ Member added successfully");
-  } catch (err) {
-    showToast("Failed: " + (err.response?.data?.error || err.message));
+  async function sendInvite() {
+    if (!inviteName.trim() || !inviteContact.trim()) {
+      showToast("Please fill in all fields"); return;
+    }
+    try {
+      const { data } = await axios.post(
+        `${API}/api/members`,
+        { name: inviteName, contact: inviteContact, groupId: selectedGroup._id },
+        { headers: authHeader() }
+      );
+      setMembers((prev) => [...prev, data]);
+      setInviteName(""); setInviteContact("");
+      setInviteModal(false);
+      showToast(`✓ Invite sent to ${inviteName.trim()}`);
+    } catch (err) {
+      showToast("Failed: " + (err.response?.data?.error || err.message));
+    }
   }
-}
+
   async function addMeeting() {
     if (!meetDate || !meetVenue.trim()) {
       showToast("Please add date and venue"); return;
@@ -832,13 +895,14 @@ async function sendInvite() {
     try {
       const { data } = await axios.post(
         `${API}/api/meetings`,
-        { date: meetDate, time: meetTime, venue: meetVenue, notes: meetNotes, groupId: selectedGroup._id },
+        { date: meetDate, time: meetTime, venue: meetVenue, link: meetLink, notes: meetNotes, groupId: selectedGroup._id },
         { headers: authHeader() }
       );
       setMeetings((prev) => [...prev, data].sort((a, b) => new Date(a.date) - new Date(b.date)));
-      setMeetDate(""); setMeetTime(""); setMeetVenue(""); setMeetNotes("");
+      setMeetDate(""); setMeetTime(""); setMeetVenue(""); setMeetNotes(""); setMeetLink("");
       setMeetingModal(false);
       showToast("✓ Meeting added");
+      console.log(meetings);
     } catch (err) {
       showToast("Failed: " + (err.response?.data?.error || err.message));
     }
@@ -897,11 +961,17 @@ async function sendInvite() {
       showToast("Error: " + (err.response?.data?.error || err.message));
     }
   }
+  const navigate = useNavigate();
+
+function handleCompleteMeeting(meeting) {
+
+  navigate(`/meetings/${meeting._id}/minutes`);
+
+}
 
   const topbarTitle =
-    activeSection === "groups"    ? "My Stokvels" :
-    activeSection === "dashboard" ? selectedGroup?.name :
-    NAV_ITEMS.find((n) => n.id === activeSection)?.label || "";
+    activeSection === "groups"    ? "" :
+    activeSection === "dashboard" ? selectedGroup?.name :"";
 
   // Get the current user's role in the selected group
   const myMemberRole = members.find((m) => m.contact === currentUserEmail)?.role || "Member";
@@ -984,11 +1054,7 @@ async function sendInvite() {
       <div className="main">
         <header className="topbar">
           <h1 className="topbar-title">{topbarTitle}</h1>
-          {selectedGroup && activeSection === "members" && (
-            <button className="btn-invite" onClick={() => setInviteModal(true)}>
-              + Invite Member
-            </button>
-          )}
+          
         </header>
 
         <main id="main-content">
@@ -1026,7 +1092,9 @@ async function sendInvite() {
           </div>
 
           <div hidden={activeSection !== "meetings"}>
-            <Meetings meetings={meetings} onAddMeeting={() => setMeetingModal(true)} />
+            <Meetings meetings={meetings} onAddMeeting={() => setMeetingModal(true)} 
+  onCompleteMeeting={handleCompleteMeeting}
+/> 
           </div>
 
           <div hidden={activeSection !== "contributions"}>
@@ -1093,6 +1161,10 @@ async function sendInvite() {
         <Field label="Venue" htmlFor="meet-venue">
           <input id="meet-venue" type="text" value={meetVenue}
             onChange={(e) => setMeetVenue(e.target.value)} placeholder="e.g. Community Hall / Zoom" />
+        </Field>
+        <Field label="Link" htmlFor="meet-link">
+          <input id="meet-link" type="url" value={meetLink}
+            onChange={(e) => setMeetLink(e.target.value)} placeholder="e.g. https://zoom.us/j/123456789" />
         </Field>
         <Field label="Notes" htmlFor="meet-notes">
           <input id="meet-notes" type="text" value={meetNotes}
