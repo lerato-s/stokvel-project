@@ -1452,7 +1452,7 @@ textarea { resize: vertical; }
   color: var(--text);
 }
 
-/* Back button */
+
 .btn-back {
   background: var(--surface2);
   border: 1px solid var(--border);
