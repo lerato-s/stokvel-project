@@ -55,7 +55,7 @@ async function sendInviteEmail({ toEmail, toName, groupName, inviterName, invite
 }
 
 // ── Send meeting notification email ──────────────────────────────────────────
-async function sendMeetingNotification({ toEmail, toName, groupName, meetingDate, meetingTime, venue, agenda }) {
+async function sendMeetingNotification({ toEmail, toName, groupName, meetingDate, meetingTime,link, venue, agenda }) {
   await transporter.sendMail({
     from:    `"${groupName} Stokvel" <${process.env.EMAIL_FROM}>`,
     to:      toEmail,
@@ -77,6 +77,10 @@ async function sendMeetingNotification({ toEmail, toName, groupName, meetingDate
           <tr>
             <td style="padding: 8px; color: #666; font-weight: bold;">Venue</td>
             <td style="padding: 8px;">${venue}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px; color: #0c0b0b; font-weight: bold;">Link</td>
+            <td style="padding: 8px;"><a href="${link}" target="_blank" rel="noopener noreferrer">${link}</a></td>
           </tr>
           ${agenda ? `
           <tr style="background: #f0f0f0;">

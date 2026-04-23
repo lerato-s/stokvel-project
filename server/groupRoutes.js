@@ -74,8 +74,14 @@ const meetingSchema = new mongoose.Schema({
   venue:         { type: String, required: true, trim: true },
   status:        { type: String, enum: ["upcoming", "completed", "cancelled"], default: "upcoming" },
   agenda:        String,
-  minutes:       String,
+  minutes: {
+  summary: String,
+  decisions: [String],
+  actions: [String],
+  attendance: Object
+},
   minutesSentAt: Date,
+  link:          String,
   notes:         String,
 }, { timestamps: true })
 
@@ -386,10 +392,24 @@ router.get("/meetings", protect, async (req, res) => {
   }
 })
 
+// GET single meeting by ID
+router.get("/meetings/:id", protect, async (req, res) => {
+  try {
+    const meeting = await Meeting.findById(req.params.id);
+
+    if (!meeting) {
+      return res.status(404).json({ error: "Meeting not found" });
+    }
+
+    res.json(meeting);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 // POST /api/meetings — create meeting and notify all active members
 router.post("/meetings", protect, async (req, res) => {
   try {
-    const { date, time, venue, notes, agenda, groupId } = req.body
+    const { date, time, venue, link, notes, agenda, groupId } = req.body
 
     if (!date || !venue?.trim())
       return res.status(400).json({ error: "Date and venue are required" })
@@ -398,13 +418,19 @@ router.post("/meetings", protect, async (req, res) => {
 
     const group = await Group.findOne({ _id: groupId, owner: req.userId })
     if (!group) return res.status(404).json({ error: "Group not found" })
+console.log("Creating meeting with link:", link)
+
+    const isPast = new Date(date) < new Date();
+
 
     const meeting = await Meeting.create({
       group: groupId,
       date, time,
       venue:  venue.trim(),
+      link: link ? link.trim() : null,
       agenda: agenda?.trim(),
       notes:  notes?.trim(),
+      status: isPast ? "completed" : "upcoming",
     })
 
     // Notify all active members
@@ -417,6 +443,7 @@ router.post("/meetings", protect, async (req, res) => {
         meetingDate: formatDate(date),
         meetingTime: time,
         venue,
+        link: req.body.link,
         agenda,
       }).catch((err) => console.error(`Notify failed for ${m.contact}:`, err.message))
     ))
