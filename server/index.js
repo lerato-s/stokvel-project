@@ -265,6 +265,7 @@ app.get("/groups/:id", authenticate, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
 // ── Start server ──────────────────────────────────────────────────────────────
 app.listen(process.env.PORT || 3001, () => {
   console.log("Server is running on port " + (process.env.PORT || 3001))
