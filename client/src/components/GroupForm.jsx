@@ -1,5 +1,5 @@
 import { useState } from "react";
-import "../pages/Group.css";
+import "../pages/g.css";
 
 const FREQ_OPTIONS = ["Monthly", "Weekly", "Bi-weekly"];
 const CYCLE_OPTIONS = ["6 Months", "12 Months", "18 Months", "24 Months"];
