@@ -1,11 +1,11 @@
 import { useState } from "react";
-import "../pages/group.css";
+import "../pages/Group.css";
 
 const FREQ_OPTIONS = ["Monthly", "Weekly", "Bi-weekly"];
 const CYCLE_OPTIONS = ["6 Months", "12 Months", "18 Months", "24 Months"];
 const MEET_FREQ = ["Weekly", "Monthly", "Quarterly"];
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-const WEEKS = ["1st", "2nd", "3rd", "4th", "Last"];
+
 const PAYOUT_METHODS = ["Fixed Order (First In First Out)"];
 
 const EMPTY_FORM = {
@@ -16,7 +16,7 @@ const EMPTY_FORM = {
   max: "",
   meetFreq: "",
   meetDay: "",
-  meetWeek: "",
+ 
   payoutMethod: "",
   rules: "",
 };
@@ -41,7 +41,7 @@ export default function GroupForm({ initialValues = {}, onSave, onCancel, isSavi
       "max",
       "meetFreq",
       "meetDay",
-      "meetWeek",
+     
       "payoutMethod",
       "rules",
     ];
@@ -179,17 +179,7 @@ export default function GroupForm({ initialValues = {}, onSave, onCancel, isSavi
               </select>
             </div>
 
-            <div className="field">
-              <label htmlFor="meet-week">Week of Month</label>
-              <select id="meet-week" value={form.meetWeek} onChange={set("meetWeek")}>
-                <option value="">— Select —</option>
-                {WEEKS.map((o) => (
-                  <option key={o} value={o}>
-                    {o}
-                  </option>
-                ))}
-              </select>
-            </div>
+           
           </div>
         </fieldset>
 

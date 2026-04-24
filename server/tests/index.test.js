@@ -115,7 +115,7 @@ function setupTestRoutes(app) {
   // CREATE GROUP ROUTE (for payout testing)
   app.post('/api/groups', async (req, res) => {
     try {
-      const { name, amount, freq, cycle, max, meetFreq, meetDay, meetWeek, payoutMethod, rules } = req.body;
+      const { name, amount, freq, cycle, max, meetFreq, meetDay, payoutMethod, rules } = req.body;
       const { userId } = req.headers; // Simulate auth
       
       const creator = await UserModel.findById(userId);
@@ -131,7 +131,7 @@ function setupTestRoutes(app) {
         max: Number(max),
         meetFreq,
         meetDay,
-        meetWeek,
+     
         payoutMethod,
         rules,
         createdBy: creator._id,
@@ -471,7 +471,7 @@ describe('💰 PAYOUT (FIFO) TESTS', () => {
         max: 10,
         meetFreq: 'weekly',
         meetDay: 'Monday',
-        meetWeek: 'first',
+      
         payoutMethod: 'bank',
         rules: 'Test rules'
       });
@@ -669,7 +669,7 @@ describe('🔒 ROLE PERMISSION TESTS', () => {
         max: 10,
         meetFreq: 'weekly',
         meetDay: 'Monday',
-        meetWeek: 'first',
+       
         payoutMethod: 'bank',
         rules: 'Test rules'
       });
@@ -723,7 +723,7 @@ describe('📊 EDGE CASES', () => {
       max: 10,
       meetFreq: 'weekly',
       meetDay: 'Monday',
-      meetWeek: 'first',
+     
       payoutMethod: 'bank',
       rules: 'No members yet',
       createdBy: admin._id,
@@ -765,7 +765,7 @@ describe('📊 EDGE CASES', () => {
       max: 10,
       meetFreq: 'weekly',
       meetDay: 'Monday',
-      meetWeek: 'first',
+     
       payoutMethod: 'bank',
       rules: 'Test',
       createdBy: admin._id,
