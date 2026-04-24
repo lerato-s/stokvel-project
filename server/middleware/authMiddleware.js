@@ -1,25 +1,23 @@
-// Middleware to verify JWT and protect routes
+const { auth } = require('express-oauth2-jwt-bearer');
+const auth0Config = require('../config/auth0');
 
-const jwt = require("jsonwebtoken");
+// Middleware to validate Auth0 JWT token
+const authenticate = auth({
+  issuerBaseURL: auth0Config.issuerBaseURL,
+  audience: auth0Config.audience,
+  tokenSigningAlg: 'RS256'
+});
 
-function authenticate(req, res, next) {
-  // Extract token from Authorization header
-  const token = req.headers.authorization?.split(" ")[1];
-
-  if (!token) {
-    return res.status(401).json({ error: "You need to log in first" });
+// Optional: attach user info to request (userId, email, etc.)
+const attachUser = (req, res, next) => {
+  if (req.auth && req.auth.payload) {
+    req.userId = req.auth.payload.sub;
+    req.userEmail = req.auth.payload.email;
+    req.userName = req.auth.payload.name;
+    // Custom claim for roles (if you set up Auth0 roles)
+    req.userRole = req.auth.payload['https://stokvel.com/roles'] || 'MEMBER';
   }
+  next();
+};
 
-  try {
-    // Verify token and attach user info to request
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.userId = decoded.id;
-    req.userRole = decoded.role;
-
-    next();
-  } catch (error) {
-    return res.status(401).json({ error: "Invalid or expired token" });
-  }
-}
-
-module.exports = authenticate;
+module.exports = { authenticate, attachUser };
