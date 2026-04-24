@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
 
-// Schema for a member inside a group
 const memberSchema = new mongoose.Schema(
   {
     userId: {
@@ -21,19 +20,27 @@ const memberSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["admin", "member", "treasurer"], // allowed roles
+      enum: ["admin", "member", "treasurer"],
       default: "member"
     },
     joinedAt: {
       type: Date,
-      default: Date.now // auto set join time
+      default: Date.now
     },
     isActive: {
       type: Boolean,
-      default: true // active member flag
+      default: true
     }
-  },
-  { _id: false } // no separate id for each member
+  }
+  // Removed `{ _id: false }` because each membership should have its own ID
 );
 
-module.exports = memberSchema;
+// Static method to find memberships by user ID (returns array)
+memberSchema.statics.findByUserId = async function(userId) {
+  return await this.find({ userId }).populate('groupId'); // if you have a groupId field – adjust as needed
+};
+
+// If you have a `groupId` field, add it to the schema above.
+// Otherwise, modify the query to suit your actual data structure.
+
+module.exports = mongoose.model("Member", memberSchema);

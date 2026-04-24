@@ -1,26 +1,18 @@
-// Entry point: connects to database and starts server
+const app = require('./app');
+const mongoose = require('mongoose');
+require('dotenv').config();
 
-const mongoose = require("mongoose");
-const dotenv = require("dotenv");
-const app = require("./app");
-
-// Load environment variables
-dotenv.config();
+const PORT = process.env.PORT || 3001;
 
 // Connect to MongoDB
-mongoose
-  .connect(process.env.MONGODB_URI)
+mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
-    console.log("Database connected successfully");
-
-    const PORT = process.env.PORT || 3001;
-
-    // Start server after DB connection
+    console.log('Database connected successfully');
     app.listen(PORT, () => {
-      console.log("Server running on port " + PORT);
+      console.log(`Server running on port ${PORT}`);
     });
   })
-  .catch((err) => {
-    console.error("Database connection failed:", err);
+  .catch(err => {
+    console.error('Database connection error:', err);
     process.exit(1);
   });
