@@ -11,7 +11,7 @@ const GroupSchema = new mongoose.Schema(
     max: { type: Number, required: true },
     meetFreq: { type: String, required: true },
     meetDay: { type: String, required: true },
-    meetWeek: { type: String, required: true },
+ 
     payoutMethod: { type: String, required: true },
     rules: { type: String, required: true },
 

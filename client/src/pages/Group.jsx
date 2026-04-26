@@ -3,7 +3,7 @@ import { useState, useRef, useCallback, useEffect} from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import GroupForm from "../components/GroupForm";
-import "./group.css";
+import "./g.css";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -181,7 +181,7 @@ function Dashboard({ group, members, meetings, onBack }) {
 
   const details = [
     ["Contribution",  group.amount && group.freq ? `R${group.amount} / ${group.freq}` : "—"],
-    ["Meeting",       group.meetWeek && group.meetDay ? `Every ${group.meetWeek} ${group.meetDay}` : "—"],
+    ["Meeting",       group.meetDay ? `Every  ${group.meetDay}` : "—"],
     ["Cycle",         group.cycle || "—"],
     ["Payout Method", group.payoutMethod || "—"],
     ["Max Members",   group.max || "—"],

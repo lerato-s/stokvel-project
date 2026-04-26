@@ -45,7 +45,6 @@ const groupSchema = new mongoose.Schema({
   max:          Number,
   meetFreq:     String,
   meetDay:      String,
-  meetWeek:     String,
   payoutMethod: String,
   rules:        String,
 }, { timestamps: true })
@@ -114,7 +113,7 @@ router.get("/groups", protect, async (req, res) => {
 // POST /api/group — create group + auto assign creator as Admin
 router.post("/group", protect, async (req, res) => {
   try {
-    const { name, amount, freq, cycle, max, meetFreq, meetDay, meetWeek, payoutMethod, rules } = req.body
+    const { name, amount, freq, cycle, max, meetFreq, meetDay, payoutMethod, rules } = req.body
 
     if (!name?.trim())
       return res.status(400).json({ error: "Group name is required" })
@@ -125,7 +124,7 @@ router.post("/group", protect, async (req, res) => {
     const group = await Group.create({
       owner: req.userId,
       name, amount, freq, cycle, max,
-      meetFreq, meetDay, meetWeek, payoutMethod, rules,
+      meetFreq, meetDay,  payoutMethod, rules,
     })
 
     // Auto-assign creator as Admin member

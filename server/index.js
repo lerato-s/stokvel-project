@@ -6,6 +6,8 @@ const app = require("./app");
 
 // Load environment variables
 dotenv.config();
+ const groupRoutes = require("./routes/groupRoutes")
+ app.use("/api", groupRoutes)
 
 // Connect to MongoDB
 mongoose
