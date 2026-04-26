@@ -2,7 +2,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth0 } from '@auth0/auth0-react';
 import LoginPage from './pages/LoginPage';
-import Dashboard from './pages/Dashboard';
+import Dashboard from './pages/Group';
 
 function App() {
   const { isAuthenticated, isLoading } = useAuth0();
