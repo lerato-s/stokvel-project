@@ -101,46 +101,55 @@ function formatDate(d) {
 // ── Group routes ──────────────────────────────────────────────────────────────
 
 // GET /api/groups
-router.get("/groups", protect, async (req, res) => {
-  try {
-    const groups = await Group.find({ owner: req.userId }).sort("-createdAt")
-    res.json(groups)
-  } catch (err) {
-    res.status(500).json({ error: err.message })
-  }
-})
 
 // POST /api/group — create group + auto assign creator as Admin
+
 router.post("/group", protect, async (req, res) => {
   try {
     const { name, amount, freq, cycle, max, meetFreq, meetDay, payoutMethod, rules } = req.body
 
-    if (!name?.trim())
-      return res.status(400).json({ error: "Group name is required" })
-
-    const creator = await User.findById(req.userId)
-    if (!creator) return res.status(404).json({ error: "User not found" })
+    if (!name?.trim()) return res.status(400).json({ error: "Group name is required" })
 
     const group = await Group.create({
       owner: req.userId,
-      name, amount, freq, cycle, max,
-      meetFreq, meetDay,  payoutMethod, rules,
+      name: name.trim(),
+      amount, freq, cycle, max, meetFreq, meetDay, payoutMethod, rules,
     })
 
     // Auto-assign creator as Admin member
+    const creator = await User.findById(req.userId)
     await Member.create({
       group:    group._id,
-      name:     creator.username || creator.name || creator.email,
+      name:     creator.username || creator.name,
       contact:  creator.email,
       role:     "Admin",
       status:   "active",
-      initials: getInitials(creator.username || creator.name || creator.email),
+      initials: getInitials(creator.username || creator.name),
       slot:     1,
-      userId:   creator._id,
+      userId:   req.userId,
     })
 
     res.status(201).json(group)
   } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+router.get("/groups", protect, async (req, res) => {
+  try {
+    // Groups the user owns
+    const ownedGroups = await Group.find({ owner: req.userId }).sort("-createdAt")
+
+    // Groups the user was invited to and accepted
+    const memberships = await Member.find({ userId: req.userId, status: "active" })
+    const memberGroupIds = memberships.map((m) => m.group)
+    const memberGroups = await Group.find({
+      _id: { $in: memberGroupIds },
+      owner: { $ne: req.userId },
+    })
+
+    res.json([...ownedGroups, ...memberGroups])
+  } catch (err) {
+    console.error("GET /groups error:", err) // ← add this to see the real error
     res.status(500).json({ error: err.message })
   }
 })
@@ -183,7 +192,7 @@ router.get("/members", protect, async (req, res) => {
     const group = await Group.findOne({ _id: groupId, owner: req.userId })
     if (!group) return res.status(404).json({ error: "Group not found" })
 
-    const members = await Member.find({ group: groupId }).sort("slot")
+    const members = await Member.find({ group: groupId }).sort("slot").populate('group','name')
     res.json(members)
   } catch (err) {
     res.status(500).json({ error: err.message })
@@ -261,10 +270,17 @@ router.post("/members/accept-invite", async (req, res) => {
 
     if (!member) return res.status(400).json({ error: "Invalid or expired invite link" })
 
+    // ✅ Find the user account by email and link it
+    const user = await User.findOne({ email: member.contact })
+    console.log("Found user:", user?._id)  // add this
+    console.log("Member contact:", member.contact)
+
     member.status       = "active"
     member.inviteToken  = undefined
     member.inviteExpiry = undefined
+    if (user) member.userId = user._id  // ✅ link the account
     await member.save()
+    console.log("Saved member userId:", member.userId)
 
     res.json({ message: "Invite accepted successfully", member })
   } catch (err) {

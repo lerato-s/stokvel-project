@@ -1,5 +1,5 @@
 // Handles PayFast contribution and payout routes
-
+const {sendContributionReceiptEmail} = require("../services/emailService");
 const express = require("express");
 const mongoose = require("mongoose");
 const crypto = require("crypto");
@@ -12,7 +12,7 @@ const PAYFAST_HOST = PAYFAST_SANDBOX
   ? "https://sandbox.payfast.co.za"
   : "https://www.payfast.co.za";
 
-const MERCHANT_ID = process.env.PAYFAST_MERCHANT_ID || "10000100";
+const MERCHANT_ID = process.env.PAYFAST_MERCHANT_ID || "10000100"; ;
 const MERCHANT_KEY = process.env.PAYFAST_MERCHANT_KEY || "46f0cd694581a";
 const PASSPHRASE = process.env.PAYFAST_PASSPHRASE || "";
 const BACKEND_URL = process.env.AZURE_URL || "http://localhost:3001";
@@ -208,16 +208,12 @@ router.post("/contribute", protect, async (req, res) => {
 
     paymentData.signature = generateSignature(paymentData, PASSPHRASE);
 
-    const sortedParams = Object.keys(paymentData)
+    const params = Object.keys(paymentData)
       .sort()
-      .reduce((acc, key) => {
-        acc[key] = paymentData[key];
-        return acc;
-      }, {});
+      .map(key => `${key}=${encodeURIComponent(String(paymentData[key]).trim()).replace(/%20/g, "+")}`)
+      .join("&");
 
-    const params = new URLSearchParams(sortedParams).toString();
     const paymentUrl = `${PAYFAST_HOST}/eng/process?${params}`;
-
     console.log("PayFast URL:", paymentUrl);
 
     res.json({
@@ -241,15 +237,15 @@ router.post("/itn", express.urlencoded({ extended: false }), async (req, res) =>
 
     const expected = generateSignature(toVerify, PASSPHRASE);
 
-    if (received !== expected) {
-      console.error(
+     if (received !== expected) {
+       console.error(
         "PayFast ITN: invalid signature. Expected:",
         expected,
         "Got:",
         received
       );
       return res.status(400).send("Invalid signature");
-    }
+    } 
 
     if (data.payment_status !== "COMPLETE") {
       await Contribution.findOneAndUpdate(
@@ -273,6 +269,24 @@ router.post("/itn", express.urlencoded({ extended: false }), async (req, res) =>
     if (!contribution) {
       console.error("PayFast ITN: contribution not found for ref", data.m_payment_id);
       return res.status(404).send("Contribution not found");
+    }
+
+    try {
+      const Member = getMember()
+      const Group = getGroup()
+      const member = await Member.findById(contribution.member)
+      const group = await Group.findById(contribution.group)
+
+      await sendContributionReceiptEmail({
+        toEmail:   member.contact,
+        toName:    member.name,
+        groupName: group.name,
+        amount:    data.amount_gross,
+        reference: data.m_payment_id,
+        date:      new Date().toLocaleDateString("en-ZA"),
+      })
+    } catch (emailErr) {
+      console.error("Receipt email failed:", emailErr.message)
     }
 
     console.log(`Contribution paid: ${data.m_payment_id} — R${data.amount_gross}`);

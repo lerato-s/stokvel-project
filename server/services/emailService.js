@@ -157,6 +157,31 @@ async function sendRoleAssignedEmail({ toEmail, toName, groupName, role }) {
     `,
   })
 }
+async function sendContributionReceiptEmail({ toEmail, toName, groupName, amount, reference, date }) {
+  await transporter.sendMail({
+    from: process.env.EMAIL_FROM,
+    to: toEmail,
+    subject: `Payment Confirmed — ${groupName}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #2e7d32;">Payment Confirmed ✅</h2>
+        <p>Hi ${toName},</p>
+        <p>Your contribution to <strong>${groupName}</strong> has been received successfully.</p>
+        
+        <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 20px 0;">
+          <p style="margin: 4px 0;"><strong>Amount:</strong> R${amount}</p>
+          <p style="margin: 4px 0;"><strong>Date:</strong> ${date}</p>
+          <p style="margin: 4px 0;"><strong>Reference:</strong> ${reference}</p>
+          <p style="margin: 4px 0;"><strong>Group:</strong> ${groupName}</p>
+        </div>
+
+        <p>Thank you for your contribution!</p>
+      </div>
+    `,
+  })
+}
+
+
 
 module.exports = {
   sendInviteEmail,
@@ -164,4 +189,5 @@ module.exports = {
   sendMissingContributionEmail,
   sendMeetingMinutes,
   sendRoleAssignedEmail,
+  sendContributionReceiptEmail,
 }
