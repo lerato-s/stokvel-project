@@ -16,7 +16,6 @@ const EMPTY_FORM = {
   max: "",
   meetFreq: "",
   meetDay: "",
- 
   payoutMethod: "",
   rules: "",
 };
