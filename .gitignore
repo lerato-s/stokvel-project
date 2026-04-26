@@ -29,6 +29,9 @@ build/
 .vscode/
 .idea/
 
-#Temporary files
+# Temporary files
 *.tmp
 *.temp
+
+# Legacy auth backup (old authentication files)
+client/legacy-auth-backup/

@@ -1,3 +1,4 @@
+// server/config/db.js
 const { MongoClient } = require('mongodb');
 
 let db = null;
@@ -10,10 +11,10 @@ async function connectDB() {
         const client = new MongoClient(uri);
         await client.connect();
         db = client.db('stokvelDB');
-        console.log('Database connected successfully');
+        console.log('✅ Database connected successfully');
         return db;
     } catch (error) {
-        console.error('Database connection failed:', error);
+        console.error('❌ Database connection failed:', error);
         throw error;
     }
 }

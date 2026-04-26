@@ -1,160 +1,141 @@
-// Handles authentication-related logic
 
-const jwt = require("jsonwebtoken");
-const crypto = require("crypto");
-const UserModel = require("../models/users.js");
+const UserModel = require('../models/users');
 
-// Register new user
-const registerUser = async (req, res) => {
+/**
+ * Sync user from Auth0 to database
+ */
+const syncUser = async (req, res) => {
   try {
-    const { username, email, password } = req.body;
 
-    // Validate input
-    if (!username || !email || !password) {
-      return res.status(400).json({ error: "All fields are required" });
+    if (!req.auth || !req.auth.payload) {
+      return res.status(401).json({ error: "Invalid authentication token" });
     }
 
-    // Create user
-    const user = await UserModel.create({
-      username,
+    const payload = req.auth.payload;
+
+    // Auth0 unique ID
+    const auth0Id = payload.sub;
+
+    if (!auth0Id) {
+      return res.status(400).json({ error: "Missing Auth0 user ID" });
+    }
+
+    // Email may be missing for some providers
+    const email = payload.email || null;
+
+    // Determine user name
+    let name = payload.name;
+
+    if (!name && email) {
+      name = email.split('@')[0];
+    }
+
+    if (!name) {
+      name = auth0Id.substring(0, 10);
+    }
+
+    const picture = payload.picture || '';
+
+    // Detect provider
+    let provider = 'auth0';
+
+    if (auth0Id.includes('google')) provider = 'google';
+    if (auth0Id.includes('microsoft') || auth0Id.includes('windowslive')) provider = 'microsoft';
+
+    // Create or fetch user
+    const user = await UserModel.findOrCreateFromAuth0(
+      auth0Id,
       email,
-      password,
-      role: "member",
-    });
-
-    // Remove password before sending response
-    const { password: _, ...safeUser } = user._doc;
-
-    return res.status(201).json(safeUser);
-  } catch (error) {
-    // Handle duplicate user
-    if (error.code === 11000) {
-      return res.status(400).json({ error: "This user already exists" });
-    }
-
-    return res.status(400).json({ error: error.message });
-  }
-};
-
-// Login user and return token
-const loginUser = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    // Validate input
-    if (!email || !password) {
-      return res.status(400).json({
-        error: "Please fill in all required fields",
-      });
-    }
-
-    // Find user
-    const user = await UserModel.findOne({ email });
-    if (!user) {
-      return res.status(401).json({ error: "User not found" });
-    }
-
-    // Check password
-    const isMatch = await user.matchPassword(password);
-    if (!isMatch) {
-      return res.status(401).json({ error: "Password is incorrect" });
-    }
-
-    // Generate JWT token
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
+      name,
+      picture,
+      provider
     );
 
-    return res.status(200).json({
-      message: "Successfully logged in",
-      token,
-      id: user._id,
-      role: user.role,
-      email: user.email,
-      username: user.username,
+    res.json({
+      user: {
+        id: user._id,
+        auth0Id: user.auth0Id,
+        email: user.email,
+        fullName: user.fullName,
+        avatarUrl: user.avatarUrl,
+        provider: user.provider,
+        role: user.role,
+        createdAt: user.createdAt
+      }
     });
+
   } catch (error) {
-    return res.status(400).json({ error: error.message });
+
+    console.error("Auth0 sync error:", error);
+
+    res.status(500).json({
+      error: "User synchronization failed"
+    });
+
   }
 };
 
-// Generate password reset token
-const forgotPassword = async (req, res) => {
+
+/**
+ * Get currently logged-in user
+ */
+const getCurrentUser = async (req, res) => {
+
   try {
-    const { email } = req.body;
 
-    if (!email) {
-      return res.status(400).json({ error: "Email is required" });
+    const auth0Id = req.userId;
+
+    if (!auth0Id) {
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const user = await UserModel.findOne({ email });
-    if (!user) {
-      return res.status(404).json({
-        error: "No account found with this email",
-      });
-    }
-
-    // Generate reset token and expiry
-    const resetToken = crypto.randomBytes(32).toString("hex");
-    const resetTokenExpiry = Date.now() + 3600000;
-
-    user.resetToken = resetToken;
-    user.resetTokenExpiry = resetTokenExpiry;
-    await user.save();
-
-    return res.status(200).json({
-      message: "Password reset link generated",
-      link: `${process.env.CLIENT_URL}/reset-password?token=${resetToken}&email=${email}`,
-    });
-  } catch (error) {
-    return res.status(500).json({ error: error.message });
-  }
-};
-
-// Reset password using token
-const resetPassword = async (req, res) => {
-  try {
-    const { email, token, newPassword } = req.body;
-
-    if (!email || !token || !newPassword) {
-      return res.status(400).json({ error: "All fields are required" });
-    }
-
-    if (newPassword.length < 6) {
-      return res.status(400).json({
-        error: "Password must be at least 6 characters",
-      });
-    }
-
-    // Find user with valid token
-    const user = await UserModel.findOne({
-      email,
-      resetToken: token,
-      resetTokenExpiry: { $gt: Date.now() },
-    });
+    const user = await UserModel.findOne({ auth0Id });
 
     if (!user) {
-      return res.status(400).json({ error: "Invalid or expired token" });
+      return res.status(404).json({ error: "User not found" });
     }
 
-    // Update password and clear token
-    user.password = newPassword;
-    user.resetToken = undefined;
-    user.resetTokenExpiry = undefined;
+    res.json({
+      user: {
+        id: user._id,
+        auth0Id: user.auth0Id,
+        email: user.email,
+        fullName: user.fullName,
+        avatarUrl: user.avatarUrl,
+        provider: user.provider,
+        role: user.role,
+        createdAt: user.createdAt,
+        lastLogin: user.lastLogin
+      }
+    });
 
-    await user.save();
-
-    return res.json({ message: "Password reset successful" });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+
+    console.error("Get current user error:", error);
+
+    res.status(500).json({
+      error: "Failed to retrieve user"
+    });
+
   }
+
 };
+
+
+/**
+ * Logout endpoint
+ */
+const logout = (req, res) => {
+
+  res.json({
+    message: "Logged out successfully"
+  });
+
+};
+
 
 module.exports = {
-  registerUser,
-  loginUser,
-  forgotPassword,
-  resetPassword,
+  syncUser,
+  getCurrentUser,
+  logout
 };
