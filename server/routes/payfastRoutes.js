@@ -93,24 +93,12 @@ const Disbursement =
 
 // Creates PayFast signature from payment data
 function generateSignature(data, passphrase = "") {
+  // Only remove signature field - keep empty values
   const filtered = Object.fromEntries(
-    Object.entries(data).filter(
-      ([key, value]) =>
-        value !== "" &&
-        value !== null &&
-        value !== undefined &&
-        key !== "signature"
-    )
+    Object.entries(data).filter(([key]) => key !== "signature")
   );
 
-  const sorted = Object.keys(filtered)
-    .sort()
-    .reduce((acc, key) => {
-      acc[key] = filtered[key];
-      return acc;
-    }, {});
-
-  let str = Object.entries(sorted)
+  let str = Object.entries(filtered)
     .map(
       ([key, value]) =>
         `${key}=${encodeURIComponent(String(value).trim()).replace(/%20/g, "+")}`
@@ -230,22 +218,25 @@ router.post("/contribute", protect, async (req, res) => {
 router.post("/itn", express.urlencoded({ extended: false }), async (req, res) => {
   try {
     const data = req.body;
+    console.log("Raw body:", data)
 
     const received = data.signature;
     const toVerify = { ...data };
     delete toVerify.signature;
-
     const expected = generateSignature(toVerify, PASSPHRASE);
+    console.log("Received signature:", received)
+    console.log("Expected signature:", expected)
 
-    /*if (received !== expected) {
+    if (received !== expected) {
        console.error(
         "PayFast ITN: invalid signature. Expected:",
         expected,
         "Got:",
         received
       );
+      console.error("Invalid signature")
       return res.status(400).send("Invalid signature");
-    } */
+    } 
 
     if (data.payment_status !== "COMPLETE") {
       await Contribution.findOneAndUpdate(

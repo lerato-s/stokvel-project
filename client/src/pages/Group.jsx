@@ -1000,158 +1000,110 @@ function handleCompleteMeeting(meeting) {
 
   return (
     <div className="app-layout">
-      <aside className="sidebar" aria-label="Main navigation">
-        <div className="sidebar-logo" aria-hidden="true">
-          <span className="logo-icon">◈</span>
-          <span className="logo-text">Stokvel</span>
-        </div>
+      <header className="topbar">
+        <span className="logo-icon">◈</span>
+        <span className="logo-text">Stokvel</span>
+        {topbarTitle && (
+          <h1 className="topbar-title" style={{ marginLeft: 24 }}>{topbarTitle}</h1>
+        )}
+      </header>
 
-        <nav aria-label="Sections">
-          <ul className="sidebar-nav">
-            {NAV_ITEMS.filter((n) => n.id === "groups" || selectedGroup).map((item) => (
-              <li key={item.id}>
-                <a
-                  href={`#${item.id}`}
-                  className={`nav-item${
-                    activeSection === item.id ||
-                    (item.id === "groups" && activeSection === "dashboard")
-                      ? " active" : ""
-                  }`}
-                  aria-current={activeSection === item.id ? "page" : undefined}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (item.id === "groups") handleBack();
-                    else setActiveSection(item.id);
-                  }}
-                >
-                  <span className="nav-icon" aria-hidden="true">{item.icon}</span>
-                  {item.label}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
+      <div className="app-body">
+        <aside className="sidebar" aria-label="Main navigation">
+          <nav aria-label="Sections">
+            <ul className="sidebar-nav">
+              {NAV_ITEMS.filter((n) => n.id === "groups" || selectedGroup).map((item) => (
+                <li key={item.id}>
+                  <a
+                    href={`#${item.id}`}
+                    className={`nav-item${
+                      activeSection === item.id ||
+                      (item.id === "groups" && activeSection === "dashboard")
+                        ? " active" : ""
+                    }`}
+                    aria-current={activeSection === item.id ? "page" : undefined}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (item.id === "groups") handleBack();
+                      else setActiveSection(item.id);
+                    }}>
+                    <span className="nav-icon" aria-hidden="true">{item.icon}</span>
+                    {item.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
 
-        {/* Sidebar footer — shows logged-in user */}
-        <footer className="sidebar-footer">
-          <div className="sidebar-user">
-            <div className="sidebar-user-avatar">
-              {getInitials(currentUsername || currentUserEmail || "U")}
-            </div>
-            <div className="sidebar-user-info">
-              <span className="sidebar-user-name">
-                {currentUsername || "User"}
+          <footer className="sidebar-footer">
+            <div className="sidebar-user">
+              <div className="sidebar-user-avatar">
+                {getInitials(currentUsername || currentUserEmail || "U")}
+              </div>
+              <div className="sidebar-user-info">
+                <span className="sidebar-user-name">{currentUsername || "User"}</span>
+                <span className="sidebar-user-email">{currentUserEmail}</span>
+              </div>
+              <span className={`sidebar-role-badge ${myMemberRole.toLowerCase()}`}>
+                {myMemberRole}
               </span>
-              <span className="sidebar-user-email">{currentUserEmail}</span>
             </div>
-            <span className={`sidebar-role-badge ${myMemberRole.toLowerCase()}`}>
-              {myMemberRole}
-            </span>
-          </div>
-        </footer>
-      </aside>
+          </footer>
+        </aside>
 
-      <div className="main">
-        <header className="topbar">
-          <h1 className="topbar-title">{topbarTitle}</h1>
-          
-        </header>
-
-        <main id="main-content">
-          <div hidden={activeSection !== "groups"}>
-            <GroupsList
-              groups={groups}
-              loading={loadingGroups}
-              onSelect={handleSelectGroup}
-              onNew={() => setShowGroupForm(true)}
-            />
-          </div>
-
-          <div hidden={activeSection !== "dashboard"}>
-            {selectedGroup && (
-              <Dashboard
-                group={selectedGroup}
-                members={members}
-                meetings={meetings}
-                onBack={handleBack}
+        <div className="main">
+          <main id="main-content">
+            <div hidden={activeSection !== "groups"}>
+              <GroupsList
+                groups={groups}
+                loading={loadingGroups}
+                onSelect={handleSelectGroup}
+                onNew={() => setShowGroupForm(true)}
+                username={currentUsername}
               />
-            )}
-          </div>
-
-          <div hidden={activeSection !== "members"}>
-            <Members
-              members={members}
-              onInvite={() => setInviteModal(true)}
-              onRoleChange={handleRoleChange}
-              currentUserEmail={currentUserEmail}
-            />
-          </div>
-
-          <div hidden={activeSection !== "payouts"}>
-            <Payouts members={members} group={selectedGroup} onReorder={handleReorder} />
-          </div>
-
-          <div hidden={activeSection !== "meetings"}>
-            <Meetings meetings={meetings} onAddMeeting={() => setMeetingModal(true)} 
-  onCompleteMeeting={handleCompleteMeeting}
-/> 
-          </div>
-
-          <div hidden={activeSection !== "contributions"}>
-            <Contributions
-              contributions={contributions}
-              members={members}
-              group={selectedGroup || {}}
-              onPay={handlePay}
-              onFlagMissing={handleFlagMissing}
-              loading={payLoading}
-            />
-          </div>
-
-          <div hidden={activeSection !== "disbursements"}>
-            <Disbursements
-              disbursements={disbursements}
-              members={members}
-              group={selectedGroup || {}}
-              contributions={contributions}
-              onDisburse={handleDisburse}
-              onMarkPaid={handleMarkPaid}
-              loading={payLoading}
-            />
-          </div>
-        </main>
+            </div>
+            <div hidden={activeSection !== "dashboard"}>
+              {selectedGroup && (
+                <Dashboard group={selectedGroup} members={members} meetings={meetings} onBack={handleBack} />
+              )}
+            </div>
+            <div hidden={activeSection !== "members"}>
+              <Members members={members} onInvite={() => setInviteModal(true)} onRoleChange={handleRoleChange} currentUserEmail={currentUserEmail} />
+            </div>
+            <div hidden={activeSection !== "payouts"}>
+              <Payouts members={members} group={selectedGroup} onReorder={handleReorder} />
+            </div>
+            <div hidden={activeSection !== "meetings"}>
+              <Meetings meetings={meetings} onAddMeeting={() => setMeetingModal(true)} onCompleteMeeting={handleCompleteMeeting} />
+            </div>
+            <div hidden={activeSection !== "contributions"}>
+              <Contributions contributions={contributions} members={members} group={selectedGroup || {}} onPay={handlePay} onFlagMissing={handleFlagMissing} loading={payLoading} />
+            </div>
+            <div hidden={activeSection !== "disbursements"}>
+              <Disbursements disbursements={disbursements} members={members} group={selectedGroup || {}} contributions={contributions} onDisburse={handleDisburse} onMarkPaid={handleMarkPaid} loading={payLoading} />
+            </div>
+          </main>
+        </div>
       </div>
 
-      {/* Invite Modal */}
-      <Modal
-        open={inviteModal}
-        onClose={() => setInviteModal(false)}
-        title="Invite a Member"
+      <Modal open={inviteModal} onClose={() => setInviteModal(false)} title="Invite a Member"
         actions={[
-          <button key="send"   className="btn-primary" onClick={sendInvite}>Send Invite</button>,
-          <button key="cancel" className="btn-ghost"   onClick={() => setInviteModal(false)}>Cancel</button>,
-        ]}
-      >
+          <button key="send" className="btn-primary" onClick={sendInvite}>Send Invite</button>,
+          <button key="cancel" className="btn-ghost" onClick={() => setInviteModal(false)}>Cancel</button>,
+        ]}>
         <Field label="Full Name" htmlFor="invite-name">
-          <input id="invite-name" type="text" value={inviteName}
-            onChange={(e) => setInviteName(e.target.value)} placeholder="e.g. Zanele Dlamini" />
+          <input id="invite-name" type="text" value={inviteName} onChange={(e) => setInviteName(e.target.value)} placeholder="e.g. Zanele Dlamini" />
         </Field>
         <Field label="Email Address" htmlFor="invite-contact">
-          <input id="invite-contact" type="email" value={inviteContact}
-            onChange={(e) => setInviteContact(e.target.value)} placeholder="e.g. zanele@email.com" />
+          <input id="invite-contact" type="email" value={inviteContact} onChange={(e) => setInviteContact(e.target.value)} placeholder="e.g. zanele@email.com" />
         </Field>
       </Modal>
 
-      {/* Meeting Modal */}
-      <Modal
-        open={meetingModal}
-        onClose={() => setMeetingModal(false)}
-        title="Add Meeting"
+      <Modal open={meetingModal} onClose={() => setMeetingModal(false)} title="Add Meeting"
         actions={[
-          <button key="add"    className="btn-primary" onClick={addMeeting}>Add Meeting</button>,
-          <button key="cancel" className="btn-ghost"   onClick={() => setMeetingModal(false)}>Cancel</button>,
-        ]}
-      >
+          <button key="add" className="btn-primary" onClick={addMeeting}>Add Meeting</button>,
+          <button key="cancel" className="btn-ghost" onClick={() => setMeetingModal(false)}>Cancel</button>,
+        ]}>
         <Field label="Date" htmlFor="meet-date">
           <input id="meet-date" type="date" value={meetDate} onChange={(e) => setMeetDate(e.target.value)} />
         </Field>
@@ -1159,16 +1111,13 @@ function handleCompleteMeeting(meeting) {
           <input id="meet-time" type="time" value={meetTime} onChange={(e) => setMeetTime(e.target.value)} />
         </Field>
         <Field label="Venue" htmlFor="meet-venue">
-          <input id="meet-venue" type="text" value={meetVenue}
-            onChange={(e) => setMeetVenue(e.target.value)} placeholder="e.g. Community Hall / Zoom" />
+          <input id="meet-venue" type="text" value={meetVenue} onChange={(e) => setMeetVenue(e.target.value)} placeholder="e.g. Community Hall / Zoom" />
         </Field>
         <Field label="Link" htmlFor="meet-link">
-          <input id="meet-link" type="url" value={meetLink}
-            onChange={(e) => setMeetLink(e.target.value)} placeholder="e.g. https://zoom.us/j/123456789" />
+          <input id="meet-link" type="url" value={meetLink} onChange={(e) => setMeetLink(e.target.value)} placeholder="e.g. https://zoom.us/j/123456789" />
         </Field>
         <Field label="Notes" htmlFor="meet-notes">
-          <input id="meet-notes" type="text" value={meetNotes}
-            onChange={(e) => setMeetNotes(e.target.value)} placeholder="Optional agenda..." />
+          <input id="meet-notes" type="text" value={meetNotes} onChange={(e) => setMeetNotes(e.target.value)} placeholder="Optional agenda..." />
         </Field>
       </Modal>
 

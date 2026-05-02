@@ -1,9 +1,8 @@
 import { useState } from "react";
-import "../pages/g.css";
+
 
 const FREQ_OPTIONS = ["Monthly", "Weekly", "Bi-weekly"];
 const CYCLE_OPTIONS = ["6 Months", "12 Months", "18 Months", "24 Months"];
-const MEET_FREQ = ["Weekly", "Monthly", "Quarterly"];
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 const PAYOUT_METHODS = ["Fixed Order (First In First Out)"];
@@ -14,8 +13,6 @@ const EMPTY_FORM = {
   freq: "",
   cycle: "",
   max: "",
-  meetFreq: "",
-  meetDay: "",
   payoutMethod: "",
   rules: "",
 };
@@ -38,9 +35,6 @@ export default function GroupForm({ initialValues = {}, onSave, onCancel, isSavi
       "freq",
       "cycle",
       "max",
-      "meetFreq",
-      "meetDay",
-     
       "payoutMethod",
       "rules",
     ];
@@ -154,17 +148,6 @@ export default function GroupForm({ initialValues = {}, onSave, onCancel, isSavi
           <legend>Meeting Schedule</legend>
 
           <div className="form-grid">
-            <div className="field">
-              <label htmlFor="meet-freq">Meeting Frequency</label>
-              <select id="meet-freq" value={form.meetFreq} onChange={set("meetFreq")}>
-                <option value="">— Select —</option>
-                {MEET_FREQ.map((o) => (
-                  <option key={o} value={o}>
-                    {o}
-                  </option>
-                ))}
-              </select>
-            </div>
 
             <div className="field">
               <label htmlFor="meet-day">Meeting Day</label>
@@ -177,8 +160,6 @@ export default function GroupForm({ initialValues = {}, onSave, onCancel, isSavi
                 ))}
               </select>
             </div>
-
-           
           </div>
         </fieldset>
 

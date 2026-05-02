@@ -8,6 +8,7 @@ const {
   loginUser,
   forgotPassword,
   resetPassword,
+  AuthenticateWithGoogle,
 } = require("../controllers/authController");
 
 // Register endpoint
@@ -21,5 +22,7 @@ router.post("/forgot-password", forgotPassword);
 
 // Reset password endpoint
 router.post("/reset-password", resetPassword);
+
+router.post("/google", AuthenticateWithGoogle);
 
 module.exports = router;

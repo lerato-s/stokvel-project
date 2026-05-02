@@ -3,6 +3,7 @@
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const UserModel = require("../models/users.js");
+const admin = require("../firebaseAdmin");
 
 // Register new user
 const registerUser = async (req, res) => {
@@ -77,6 +78,48 @@ const loginUser = async (req, res) => {
     });
   } catch (error) {
     return res.status(400).json({ error: error.message });
+  }
+};
+
+const AuthenticateWithGoogle = async (req, res) => {
+  try {
+    const { idToken } = req.body;
+
+    // 1. Verify the Google token with Firebase
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const { email, name, uid } = decoded;
+
+    // 2. Find or create user in MongoDB
+    let user = await UserModel.findOne({ email });
+
+    if (!user) {
+      // New user — create them automatically
+      user = await UserModel.create({
+        username: name || email.split("@")[0],
+        email,
+        password: uid, // Firebase uid as placeholder
+        role: "member",
+        firebaseUid: uid,
+      });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    return res.status(200).json({
+      message: "Successfully authenticated with Google",
+      token,
+      id: user._id,
+      role: user.role,
+      email: user.email,
+      username: user.username,
+    });
+  } catch (error) {
+    return res.status(400).json({ error: "Invalid Google token" });
   }
 };
 
@@ -157,4 +200,5 @@ module.exports = {
   loginUser,
   forgotPassword,
   resetPassword,
+  AuthenticateWithGoogle,
 };

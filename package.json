@@ -6,7 +6,10 @@
     "start": "node index.js",
     "test": "jest --testEnvironment node",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "client": "cd client && npm run dev",
+    "server": "node server/index.js",
+    "dev": "concurrently \"npm run server\" \"npm run client\""
   },
   "keywords": [],
   "author": "",
@@ -24,6 +27,7 @@
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.1.4",
+    "concurrently": "^9.2.1",
     "jest": "^30.3.0",
     "mongodb-memory-server": "^11.0.1",
     "nodemon": "^3.1.14",

@@ -181,8 +181,6 @@ async function sendContributionReceiptEmail({ toEmail, toName, groupName, amount
   })
 }
 
-
-
 module.exports = {
   sendInviteEmail,
   sendMeetingNotification,
