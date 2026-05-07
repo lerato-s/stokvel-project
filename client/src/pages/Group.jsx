@@ -7,6 +7,8 @@ import "./g.css";
 
 const API = import.meta.env.VITE_API_URL;
 
+
+
 function authHeader() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const token = user.token || user.accessToken || (user.user?.token);
@@ -977,26 +979,53 @@ function handleCompleteMeeting(meeting) {
   const myMemberRole = members.find((m) => m.contact === currentUserEmail)?.role || "Member";
 
   if (showGroupForm) {
-    return (
-      <div className="app-layout">
-        <aside className="sidebar" aria-label="Navigation">
-          <div className="sidebar-logo" aria-hidden="true">
-            <span className="logo-icon">◈</span>
-            <span className="logo-text">Stokvel</span>
-          </div>
-        </aside>
-        <div className="main">
-          <header className="topbar">
-            <button className="btn-back" onClick={() => setShowGroupForm(false)}>← Back</button>
-            <h1 className="topbar-title">New Group</h1>
+      return (
+        <div style={{ 
+          minHeight: "100vh", 
+          color: "#f0eeff",
+          display: "flex",
+          flexDirection: "column",
+          width: "100vw",
+          
+
+        }}>
+          <header style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 16,
+            padding: "0 40px",
+            height: 64,
+            background: "#131929",
+            borderBottom: "1px solid #252d45",
+            flexShrink: 0,
+            width: "100%"
+          }}>
+            <button 
+              onClick={() => setShowGroupForm(false)} 
+              style={{ 
+                color: "#9b7fd4", background: "none", 
+                border: "none", cursor: "pointer", fontSize: 15,
+                display: "flex", alignItems: "center", gap: 6
+              }}>
+              ‹ New Group
+            </button>
+            
           </header>
-          <main>
+          <main style={{ 
+            padding: "40px",
+            overflowY: "auto",
+            flex: 1,
+            width: "100%",
+            boxSizing: "border-box",
+            
+            
+          }}>
             <GroupForm onSave={saveGroup} onCancel={() => setShowGroupForm(false)} />
           </main>
         </div>
-      </div>
-    );
+      );
   }
+  
 
   return (
     <div className="app-layout">

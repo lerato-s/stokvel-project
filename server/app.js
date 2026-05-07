@@ -14,6 +14,7 @@ const groupRoutes = require("./routes/groupRoutes");
 const payfastRoutes = require("./routes/payfastRoutes");
 
 
+
 const app = express();
 
 // Parse JSON and form data
@@ -40,5 +41,6 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api", groupRoutes);
 app.use("/api/payfast", payfastRoutes);
+
 
 module.exports = app;

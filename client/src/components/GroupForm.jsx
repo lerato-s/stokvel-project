@@ -1,4 +1,6 @@
 import { useState } from "react";
+import "../pages/g.css";
+
 
 
 const FREQ_OPTIONS = ["Monthly", "Weekly", "Bi-weekly"];
