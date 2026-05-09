@@ -52,4 +52,4 @@ GroupSchema.methods.getFIFOOrder = function () {
     .sort((a, b) => new Date(a.joinedAt) - new Date(b.joinedAt)); // earliest first
 };
 
-module.exports = mongoose.model("Group", GroupSchema);
+module.exports = mongoose.models.Group || mongoose.model("Group", GroupSchema);
