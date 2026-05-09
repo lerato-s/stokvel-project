@@ -13,6 +13,8 @@ function authHeader() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const token = user.token || user.accessToken || (user.user?.token);
   if (token) return { Authorization: `Bearer ${token}` };
+  const currentUserId = JSON.parse(localStorage.getItem("user") || "{}")?.user?._id 
+  || JSON.parse(localStorage.getItem("user") || "{}")?._id
   return {};
 }
 
@@ -479,7 +481,7 @@ function Meetings({ meetings, onAddMeeting, onCompleteMeeting }) {
 }
 
 // ── Contributions ─────────────────────────────────────────────────────────────
-function Contributions({ contributions, members, group, onPay, loading, onFlagMissing }) {
+function Contributions({ contributions, members, group, onPay, loading, onFlagMissing,isOwner, myMember }) {
   const month = currentMonth();
   const paidMemberIds = new Set(
     contributions
@@ -543,6 +545,9 @@ function Contributions({ contributions, members, group, onPay, loading, onFlagMi
             const record  = contributions.find(
               (c) => (c.member?._id || c.member) === m._id && c.month === month && c.status === "paid"
             );
+
+            const canPay = isOwner || myMember?._id === m._id;
+
             return (
               <li key={m._id} className={`contribution-row${hasPaid ? " paid" : ""}`}>
                 <div className="payout-avatar">{m.initials}</div>
@@ -559,9 +564,11 @@ function Contributions({ contributions, members, group, onPay, loading, onFlagMi
                 ) : (
                   <div className="contrib-actions">
                     <span className="status-badge pending">Unpaid</span>
-                    <button className="btn-pay" onClick={() => onPay(m)} disabled={loading}>
+                    {canPay && (
+                      <button className="btn-pay" onClick={() => onPay(m)} disabled={loading}>
                       Pay R{group.amount}
                     </button>
+                    )}
                   </div>
                 )}
               </li>
@@ -737,6 +744,8 @@ export default function Group() {
   const currentUser      = JSON.parse(localStorage.getItem("user") || "{}");
   const currentUserEmail = currentUser.email || currentUser.user?.email || "";
   const currentUsername  = currentUser.username || currentUser.user?.username || "";
+  const currentUserId = JSON.parse(localStorage.getItem("user") || "{}")?.user?._id 
+  || JSON.parse(localStorage.getItem("user") || "{}")?._id
 
   const [activeSection,  setActiveSection]  = useState("groups");
   const [groups,         setGroups]         = useState([]);
@@ -758,6 +767,7 @@ export default function Group() {
   const [contributions,  setContributions]  = useState([]);
   const [disbursements,  setDisbursements]  = useState([]);
   const [payLoading,     setPayLoading]     = useState(false);
+  const [myMember,       setMyMember]       = useState(null)
 
   const showToast = useCallback((msg) => {
     setToast(msg);
@@ -789,6 +799,11 @@ export default function Group() {
         setDisbursements(dRes.data);
       })
       .catch(() => showToast("Failed to load group data"));
+
+      axios.get(`${API}/api/members/me?groupId=${selectedGroup._id}`, h)
+      .then((r) => setMyMember(r.data))
+      .catch(() => setMyMember(null));
+
   }, [selectedGroup]);
 
   // Handle PayFast return
@@ -798,7 +813,7 @@ export default function Group() {
     const ref     = params.get("ref");
 
     if (payment === "success") {
-      showToast(`✓ Payment successful! Ref: ${ref}`);
+      showToast(`✓ Payment successful!`);
       window.history.replaceState({}, "", window.location.pathname);
       let attempts = 0;
       const interval = setInterval(async () => {
@@ -924,6 +939,7 @@ export default function Group() {
   async function handlePay(member) {
     setPayLoading(true);
     try {
+      
       const { data } = await axios.post(
         `${API}/api/payfast/contribute`,
         { groupId: selectedGroup._id, memberId: member._id },
@@ -931,6 +947,7 @@ export default function Group() {
       );
       window.location.href = data.paymentUrl;
     } catch (err) {
+      console.log("Pay error response:", err.response?.data)
       showToast("Payment error: " + (err.response?.data?.error || err.message));
     } finally { setPayLoading(false); }
   }
@@ -1106,7 +1123,7 @@ function handleCompleteMeeting(meeting) {
               <Meetings meetings={meetings} onAddMeeting={() => setMeetingModal(true)} onCompleteMeeting={handleCompleteMeeting} />
             </div>
             <div hidden={activeSection !== "contributions"}>
-              <Contributions contributions={contributions} members={members} group={selectedGroup || {}} onPay={handlePay} onFlagMissing={handleFlagMissing} loading={payLoading} />
+              <Contributions contributions={contributions} members={members} group={selectedGroup || {}} onPay={handlePay} onFlagMissing={handleFlagMissing} loading={payLoading} isOwner={selectedGroup?.owner === currentUserId} myMember={myMember} />
             </div>
             <div hidden={activeSection !== "disbursements"}>
               <Disbursements disbursements={disbursements} members={members} group={selectedGroup || {}} contributions={contributions} onDisburse={handleDisburse} onMarkPaid={handleMarkPaid} loading={payLoading} />

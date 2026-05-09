@@ -1,9 +1,14 @@
-// payfastRoutes.test.js
-// Run with: npm test
-//
-// Install test deps first:
-//   npm install --save-dev jest supertest mongodb-memory-server @jest/globals
+
 jest.setTimeout(30000)
+jest.mock('../services/emailService', () => ({
+  sendContributionReceiptEmail: jest.fn().mockResolvedValue(true),
+  sendInviteEmail: jest.fn().mockResolvedValue(true),
+  sendMeetingNotification: jest.fn().mockResolvedValue(true),
+  sendMissingContributionEmail: jest.fn().mockResolvedValue(true),
+  sendRoleAssignedEmail: jest.fn().mockResolvedValue(true),
+  sendMeetingMinutes: jest.fn().mockResolvedValue(true),
+}));
+
 const request  = require("supertest")
 const express  = require("express")
 const mongoose = require("mongoose")
@@ -93,6 +98,7 @@ beforeAll(async () => {
     slot:     1,
   })
   memberId = member._id
+  fakeDisbursementId = new mongoose.Types.ObjectId();
 
   // Build express app with the routes
   app = express()
@@ -417,6 +423,7 @@ describe("PATCH /api/payfast/disburse/:id", () => {
     expect(res.body.status).toBe("paid")
     expect(res.body.paidAt).not.toBeNull()
   })
+  
 
   test("returns 404 for a disbursement that doesn't belong to user", async () => {
     const otherUserId = new mongoose.Types.ObjectId()
@@ -437,6 +444,8 @@ describe("PATCH /api/payfast/disburse/:id", () => {
   })
 
 })
+
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET DISBURSEMENTS TESTS

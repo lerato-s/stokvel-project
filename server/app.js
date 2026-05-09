@@ -1,11 +1,13 @@
+const dotenv = require("dotenv");
+dotenv.config();
 // Creates and configures the Express app
 
 const express = require("express");
 const cors = require("cors");
-const dotenv = require("dotenv");
+
 
 // Load environment variables
-dotenv.config();
+
 
 // Import route modules
 const authRoutes = require("./routes/authRoutes");
@@ -36,11 +38,13 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
+
 // Mount route modules under API paths
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api", groupRoutes);
 app.use("/api/payfast", payfastRoutes);
+
 
 
 module.exports = app;

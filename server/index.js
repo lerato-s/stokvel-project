@@ -3,8 +3,10 @@ require('dotenv').config({ path: __dirname + '/.env' });
 const mongoose = require("mongoose");
 const app = require("./app");
 const groupRoutes = require("./routes/groupRoutes");
+const payfastRoutes = require("./routes/payfastRoutes")
 
 app.use("/api", groupRoutes);
+
 
 // Connect to MongoDB
 mongoose

@@ -136,12 +136,28 @@ router.post("/group", protect, async (req, res) => {
 })
 router.get("/groups", protect, async (req, res) => {
   try {
-    // Groups the user owns
     const ownedGroups = await Group.find({ owner: req.userId }).sort("-createdAt")
 
-    // Groups the user was invited to and accepted
-    const memberships = await Member.find({ userId: req.userId, status: "active" })
+    // Build the query — start with userId match
+    const memberQuery = { status: "active", userId: req.userId }
+
+    // Safely try to add email fallback
+    try {
+      const currentUser = await User.findById(req.userId).select("email")
+      if (currentUser?.email) {
+        memberQuery.$or = [
+          { userId: req.userId },
+          { contact: currentUser.email.toLowerCase() }
+        ]
+        delete memberQuery.userId // $or covers it
+      }
+    } catch (userErr) {
+      console.error("User lookup failed, falling back to userId only:", userErr.message)
+    }
+
+    const memberships = await Member.find(memberQuery)
     const memberGroupIds = memberships.map((m) => m.group)
+
     const memberGroups = await Group.find({
       _id: { $in: memberGroupIds },
       owner: { $ne: req.userId },
@@ -149,7 +165,7 @@ router.get("/groups", protect, async (req, res) => {
 
     res.json([...ownedGroups, ...memberGroups])
   } catch (err) {
-    console.error("GET /groups error:", err) // ← add this to see the real error
+    console.error("GET /groups error:", err.message) // this will show root cause in terminal
     res.status(500).json({ error: err.message })
   }
 })
@@ -189,11 +205,51 @@ router.get("/members", protect, async (req, res) => {
     const { groupId } = req.query
     if (!groupId) return res.status(400).json({ error: "groupId required" })
 
-    const group = await Group.findOne({ _id: groupId, owner: req.userId })
+    // Check if user is owner OR an active member of the group
+    const group = await Group.findById(groupId)
     if (!group) return res.status(404).json({ error: "Group not found" })
 
-    const members = await Member.find({ group: groupId }).sort("slot").populate('group','name')
+    const isOwner = group.owner.toString() === req.userId
+
+    if (!isOwner) {
+      const currentUser = await User.findById(req.userId).select("email")
+      const isMember = await Member.findOne({
+        group: groupId,
+        status: "active",
+        $or: [
+          { userId: req.userId },
+          { contact: currentUser?.email?.toLowerCase() }
+        ]
+      })
+      if (!isMember) return res.status(403).json({ error: "Access denied" })
+    }
+
+    const members = await Member.find({ group: groupId }).sort("slot").populate("group", "name")
     res.json(members)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+router.get("/members/me", protect, async (req, res) => {
+  try {
+    const { groupId } = req.query
+    if (!groupId) return res.status(400).json({ error: "groupId required" })
+
+    const currentUser = await User.findById(req.userId).select("email")
+
+    const member = await Member.findOne({
+      group: groupId,
+      status: "active",
+      $or: [
+        { userId: req.userId },
+        { contact: currentUser?.email?.toLowerCase() }
+      ]
+    })
+
+    if (!member) return res.status(404).json({ error: "You are not a member of this group" })
+
+    res.json(member)
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
@@ -278,11 +334,14 @@ router.post("/members/accept-invite", async (req, res) => {
     member.status       = "active"
     member.inviteToken  = undefined
     member.inviteExpiry = undefined
-    if (user) member.userId = user._id  // ✅ link the account
+    if (user) member.userId = user._id  
     await member.save()
     console.log("Saved member userId:", member.userId)
 
-    res.json({ message: "Invite accepted successfully", member })
+    res.json({ message: "Invite accepted successfully",
+      member,
+      needsRegistration: !user 
+    })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
@@ -397,8 +456,23 @@ router.get("/meetings", protect, async (req, res) => {
     const { groupId } = req.query
     if (!groupId) return res.status(400).json({ error: "groupId required" })
 
-    const group = await Group.findOne({ _id: groupId, owner: req.userId })
+    const group = await Group.findById(groupId)
     if (!group) return res.status(404).json({ error: "Group not found" })
+
+    const isOwner = group.owner.toString() === req.userId
+
+    if (!isOwner) {
+      const currentUser = await User.findById(req.userId).select("email")
+      const isMember = await Member.findOne({
+        group: groupId,
+        status: "active",
+        $or: [
+          { userId: req.userId },
+          { contact: currentUser?.email?.toLowerCase() }
+        ]
+      })
+      if (!isMember) return res.status(403).json({ error: "Access denied" })
+    }
 
     const meetings = await Meeting.find({ group: groupId }).sort("date")
     res.json(meetings)

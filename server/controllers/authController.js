@@ -23,6 +23,14 @@ const registerUser = async (req, res) => {
       role: "member",
     });
 
+    await Member.updateMany(
+      { 
+        contact: user.email.toLowerCase(), 
+        userId: { $exists: false }   // only unfilled ones
+      },
+      { $set: { userId: user._id } }
+    )
+
     // Remove password before sending response
     const { password: _, ...safeUser } = user._doc;
 
@@ -54,6 +62,14 @@ const loginUser = async (req, res) => {
     if (!user) {
       return res.status(401).json({ error: "User not found" });
     }
+
+    await Member.updateMany(
+      { 
+        contact: user.email.toLowerCase(), 
+        userId: { $exists: false }   // only unfilled ones
+      },
+      { $set: { userId: user._id } }
+    )
 
     // Check password
     const isMatch = await user.matchPassword(password);
