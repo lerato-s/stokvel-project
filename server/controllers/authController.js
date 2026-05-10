@@ -135,6 +135,7 @@ const AuthenticateWithGoogle = async (req, res) => {
       username: user.username,
     });
   } catch (error) {
+    console.error("Google auth error:", error);
     return res.status(400).json({ error: "Invalid Google token" });
   }
 };
