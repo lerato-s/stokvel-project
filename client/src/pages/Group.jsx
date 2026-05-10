@@ -191,6 +191,12 @@ function GroupsList({ groups, loading, onSelect, onNew, username }) {
 
 // ── Admin Dashboard ───────────────────────────────────────────────────────────
 function Dashboard({ group, members, meetings, onBack }) {
+
+  const [rates, setRates] = useState(null); // initial value
+  useEffect(() => {
+    fetch(`${API}/api/rates`).then(res => res.json()).then(data => setRates(data));
+  }, []);
+
   const pool =
     group.amount && members.length
       ? `R ${(Number(group.amount) * members.length).toLocaleString()}`
@@ -205,6 +211,8 @@ function Dashboard({ group, members, meetings, onBack }) {
     { label: "Monthly Pool",  value: pool },
     { label: "Payout Method", value: group.payoutMethod || "—" },
     { label: "Next Meeting",  value: upcoming.length ? formatDate(upcoming[0].date) : "—" },
+    { label: "Repo Rate", value: rates ? `${rates.repoRate}%` : "—" },
+    { label: "Prime Rate", value: rates ? `${rates.primeRate}%` : "—" },
   ];
 
   const details = [
@@ -1464,13 +1472,18 @@ export default function Group() {
   return (
     <div className="app-layout">
       <header className="topbar">
+        <button className="hamburger" onClick={() => setSidebarOpen(true)}>☰</button>
         <span className="logo-icon">◈</span>
         <span className="logo-text">Stokvel</span>
         {topbarTitle && <h1 className="topbar-title" style={{ marginLeft: 24 }}>{topbarTitle}</h1>}
       </header>
 
       <div className="app-body">
-        <aside className="sidebar" aria-label="Main navigation">
+        <div
+          className={`sidebar-overlay${sidebarOpen ? " open" : ""}`}
+          onClick={() => setSidebarOpen(false)}
+        />
+        <aside className={`sidebar${sidebarOpen ? " open" : ""}`} aria-label="Main navigation">
           <nav aria-label="Sections">
             <ul className="sidebar-nav">
               {navItems
