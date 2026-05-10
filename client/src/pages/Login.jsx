@@ -1,57 +1,83 @@
-import React, { useState } from "react";
+import { useState } from "react";
+import { signInWithPopup, signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+import { auth, googleProvider } from "../firebase";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import "../pages/Login.css";
 import LoginForm from "../components/LoginForm";
 
 function Login() {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [resetSent, setResetSent] = useState(false);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Add this at the top of handleSubmit to confirm state is populating
-  
+  async function handleBackendAuth(firebaseUser) {
+    const idToken = await firebaseUser.getIdToken();
+    const response = await axios.post(
+      `${import.meta.env.VITE_API_URL}/api/auth/google`,
+      { idToken }
+    );
+    localStorage.setItem("user", JSON.stringify(response.data));
+    navigate("/group");
+  }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
+  async function handleGoogleLogin() {
+    setError("");
+    setLoading(true);
     try {
-      const result = await axios.post(`${import.meta.env.VITE_API_URL}/login`, {
-        email,
-        password
-      }, 
-      {
-        headers: {"Content-Type": "application/json"}
-      });
-
-      console.log("Login successful:", result.data)
-
-      const user = result.data;
-      const role = user.role;
-      localStorage.setItem("user", JSON.stringify(user));
-        
-      if (result.data.message === "Successfully logged in"){
-        {
-           navigate("/g");
-        }
+      const result = await signInWithPopup(auth, googleProvider);
+      await handleBackendAuth(result.user);
+    } catch (err) {
+      setError("Google sign-in failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
+  }
 
-  }catch (error) {
-      console.error("Error logging in:", error);
-      setErrorMessage("Invalid email or password");
+  async function handleEmailLogin(e) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      await handleBackendAuth(result.user);
+    } catch (err) {
+      console.log("Login error code:", err.code)      // ✅ add
+      console.log("Login error message:", err.message)
+      setError("Invalid email or password.");
+    } finally {
+      setLoading(false);
     }
-  };
+  }
 
-  return(
+  async function handleForgotPassword() {
+    if (!email) {
+      setError("Enter your email above first, then click Forgot Password.");
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setResetSent(true);
+      setError("");
+    } catch (err) {
+      setError("Could not send reset email. Check the email address.");
+    }
+  }
+
+  return (
     <LoginForm
-        handleSubmit={handleSubmit}
-        errorMessage={errorMessage}
-        setEmail={setEmail}
-        setPassword={setPassword}
-        showPassword={showPassword}
-        setShowPassword={setShowPassword}
+      email={email}
+      setEmail={setEmail}
+      password={password}
+      setPassword={setPassword}
+      error={error}
+      resetSent={resetSent}
+      loading={loading}
+      handleEmailLogin={handleEmailLogin}
+      handleGoogleLogin={handleGoogleLogin}
+      handleForgotPassword={handleForgotPassword}
     />
   );
 }

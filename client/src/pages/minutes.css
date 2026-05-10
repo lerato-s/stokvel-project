@@ -1,0 +1,157 @@
+/* minutes.css */
+
+/* PAGE WRAPPER */
+.minutes-page {
+  min-height: 100vh;
+  width: 100%;
+  padding: 30px 40px;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* TOP BAR */
+.section-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface);
+  padding: 18px 22px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.section-header-bar h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--gold-light);
+}
+
+/* BACK BUTTON */
+.btn-back {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.btn-back:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface);
+  padding: 18px 22px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+/* CARDS */
+.minutes-page .card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+}
+
+/* HEADINGS INSIDE SECTIONS */
+.minutes-page h3 {
+  margin-bottom: 12px;
+  font-size: 18px;
+  color: var(--gold-light);
+}
+
+/* INPUTS + TEXTAREA */
+.minutes-page input,
+.minutes-page textarea {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+  margin-bottom: 10px;
+}
+
+.minutes-page textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.minutes-page input:focus,
+.minutes-page textarea:focus {
+  border-color: var(--gold);
+}
+
+/* SMALL ACTION BUTTONS */
+.minutes-page button {
+  cursor: pointer;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  padding: 8px 12px;
+  font-size: 13px;
+  transition: 0.2s;
+}
+
+.minutes-page button:hover {
+  background: rgba(155, 127, 212, 0.15);
+  border-color: var(--gold);
+}
+
+/* PRIMARY SAVE BUTTON */
+.btn-primary {
+  background: var(--gold);
+  color: #0e0c14;
+  font-weight: 700;
+  padding: 14px 18px;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  transition: 0.2s ease;
+  align-self: flex-end;
+}
+
+.btn-primary:hover {
+  background: var(--gold-light);
+}
+
+/* ATTENDANCE ROWS */
+.minutes-page .attendance-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.minutes-page .attendance-row span {
+  font-size: 14px;
+  color: var(--text);
+}
+
+/* ATTENDANCE BUTTON GROUP */
+.minutes-page .attendance-buttons button {
+  margin-left: 6px;
+  font-size: 12px;
+  padding: 6px 10px;
+}
+
+/* ACTIVE STATE (you already use bold) */
+.minutes-page .attendance-buttons button.active {
+  background: rgba(155, 127, 212, 0.2);
+  border-color: var(--gold);
+  font-weight: bold;
+}
