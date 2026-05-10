@@ -1323,6 +1323,7 @@ export default function Group() {
   const [disbursements,  setDisbursements]  = useState([]);
   const [payLoading,     setPayLoading]     = useState(false);
   const [myMember,       setMyMember]       = useState(null);
+  const [sidebarOpen,    setSidebarOpen]    = useState(false);
 
   const showToast = useCallback((msg) => {
     setToast(msg);
@@ -1563,13 +1564,18 @@ export default function Group() {
   return (
     <div className="app-layout">
       <header className="topbar">
+        <button className="hamburger" onClick={() => setSidebarOpen(true)}>☰</button>
         <span className="logo-icon">◈</span>
         <span className="logo-text">Stokvel</span>
         {topbarTitle && <h1 className="topbar-title" style={{ marginLeft: 24 }}>{topbarTitle}</h1>}
       </header>
 
       <div className="app-body">
-        <aside className="sidebar" aria-label="Main navigation">
+        <div
+          className={`sidebar-overlay${sidebarOpen ? " open" : ""}`}
+          onClick={() => setSidebarOpen(false)}
+        />
+        <aside className={`sidebar${sidebarOpen ? " open" : ""}`} aria-label="Main navigation">
           <nav aria-label="Sections">
             <ul className="sidebar-nav">
               {navItems
