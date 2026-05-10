@@ -1,13 +1,5 @@
 // groupRoutes.js
-// Add to index.js:
-//   const groupRoutes = require("./groupRoutes")
-//   app.use("/api", groupRoutes)
-//
-// New .env vars needed:
-//   EMAIL_USER=your_gmail@gmail.com
-//   EMAIL_PASS=your_gmail_app_password
-//   EMAIL_FROM=your_gmail@gmail.com
-const User = require("../models/users")  // adjust path if needed
+const User = require("../models/users")
 const express  = require("express")
 const mongoose = require("mongoose")
 const jwt      = require("jsonwebtoken")
@@ -74,11 +66,11 @@ const meetingSchema = new mongoose.Schema({
   status:        { type: String, enum: ["upcoming", "completed", "cancelled"], default: "upcoming" },
   agenda:        String,
   minutes: {
-  summary: String,
-  decisions: [String],
-  actions: [String],
-  attendance: Object
-},
+    summary:   String,
+    decisions: [String],
+    actions:   [String],
+    attendance: Object,
+  },
   minutesSentAt: Date,
   link:          String,
   notes:         String,
@@ -98,12 +90,34 @@ function formatDate(d) {
   })
 }
 
+// ── Shared permission helper ──────────────────────────────────────────────────
+// Returns the group if the user is owner OR has the required role(s) as an active member.
+// roles: array of allowed roles e.g. ["Treasurer"] or ["Treasurer", "Admin"]
+async function getGroupIfAuthorised(groupId, userId, roles = []) {
+  const group = await Group.findById(groupId)
+  if (!group) return { group: null, error: "Group not found", status: 404 }
+
+  const isOwner = group.owner.toString() === userId
+  if (isOwner) return { group }
+
+  const currentUser = await User.findById(userId).select("email")
+  const member = await Member.findOne({
+    group: groupId,
+    status: "active",
+    role: { $in: roles },
+    $or: [
+      { userId },
+      { contact: currentUser?.email?.toLowerCase() },
+    ],
+  })
+
+  if (!member) return { group: null, error: "Access denied", status: 403 }
+  return { group }
+}
+
 // ── Group routes ──────────────────────────────────────────────────────────────
 
-// GET /api/groups
-
 // POST /api/group — create group + auto assign creator as Admin
-
 router.post("/group", protect, async (req, res) => {
   try {
     const { name, amount, freq, cycle, max, meetFreq, meetDay, payoutMethod, rules } = req.body
@@ -116,7 +130,6 @@ router.post("/group", protect, async (req, res) => {
       amount, freq, cycle, max, meetFreq, meetDay, payoutMethod, rules,
     })
 
-    // Auto-assign creator as Admin member
     const creator = await User.findById(req.userId)
     await Member.create({
       group:    group._id,
@@ -134,43 +147,43 @@ router.post("/group", protect, async (req, res) => {
     res.status(500).json({ error: err.message })
   }
 })
+
+// GET /api/groups
 router.get("/groups", protect, async (req, res) => {
   try {
     const ownedGroups = await Group.find({ owner: req.userId }).sort("-createdAt")
 
-    // Build the query — start with userId match
     const memberQuery = { status: "active", userId: req.userId }
 
-    // Safely try to add email fallback
     try {
       const currentUser = await User.findById(req.userId).select("email")
       if (currentUser?.email) {
         memberQuery.$or = [
           { userId: req.userId },
-          { contact: currentUser.email.toLowerCase() }
+          { contact: currentUser.email.toLowerCase() },
         ]
-        delete memberQuery.userId // $or covers it
+        delete memberQuery.userId
       }
     } catch (userErr) {
       console.error("User lookup failed, falling back to userId only:", userErr.message)
     }
 
-    const memberships = await Member.find(memberQuery)
+    const memberships    = await Member.find(memberQuery)
     const memberGroupIds = memberships.map((m) => m.group)
 
     const memberGroups = await Group.find({
-      _id: { $in: memberGroupIds },
+      _id:   { $in: memberGroupIds },
       owner: { $ne: req.userId },
     })
 
     res.json([...ownedGroups, ...memberGroups])
   } catch (err) {
-    console.error("GET /groups error:", err.message) // this will show root cause in terminal
+    console.error("GET /groups error:", err.message)
     res.status(500).json({ error: err.message })
   }
 })
 
-// PATCH /api/group/:id
+// PATCH /api/group/:id — owner only
 router.patch("/group/:id", protect, async (req, res) => {
   try {
     const group = await Group.findOneAndUpdate(
@@ -185,7 +198,7 @@ router.patch("/group/:id", protect, async (req, res) => {
   }
 })
 
-// DELETE /api/group/:id
+// DELETE /api/group/:id — owner only
 router.delete("/group/:id", protect, async (req, res) => {
   try {
     await Group.findOneAndDelete({ _id: req.params.id, owner: req.userId })
@@ -199,13 +212,12 @@ router.delete("/group/:id", protect, async (req, res) => {
 
 // ── Member routes ─────────────────────────────────────────────────────────────
 
-// GET /api/members?groupId=xxx
+// GET /api/members?groupId=xxx — owner or any active member
 router.get("/members", protect, async (req, res) => {
   try {
     const { groupId } = req.query
     if (!groupId) return res.status(400).json({ error: "groupId required" })
 
-    // Check if user is owner OR an active member of the group
     const group = await Group.findById(groupId)
     if (!group) return res.status(404).json({ error: "Group not found" })
 
@@ -218,8 +230,8 @@ router.get("/members", protect, async (req, res) => {
         status: "active",
         $or: [
           { userId: req.userId },
-          { contact: currentUser?.email?.toLowerCase() }
-        ]
+          { contact: currentUser?.email?.toLowerCase() },
+        ],
       })
       if (!isMember) return res.status(403).json({ error: "Access denied" })
     }
@@ -231,6 +243,7 @@ router.get("/members", protect, async (req, res) => {
   }
 })
 
+// GET /api/members/me?groupId=xxx
 router.get("/members/me", protect, async (req, res) => {
   try {
     const { groupId } = req.query
@@ -243,19 +256,18 @@ router.get("/members/me", protect, async (req, res) => {
       status: "active",
       $or: [
         { userId: req.userId },
-        { contact: currentUser?.email?.toLowerCase() }
-      ]
+        { contact: currentUser?.email?.toLowerCase() },
+      ],
     })
 
     if (!member) return res.status(404).json({ error: "You are not a member of this group" })
-
     res.json(member)
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
 })
 
-// POST /api/members — invite member via email
+// POST /api/members — invite member via email (owner only)
 router.post("/members", protect, async (req, res) => {
   try {
     const { name, contact, groupId } = req.body
@@ -275,8 +287,8 @@ router.post("/members", protect, async (req, res) => {
 
     const inviteToken  = crypto.randomBytes(32).toString("hex")
     const inviteExpiry = new Date(Date.now() + 48 * 60 * 60 * 1000)
+    const count        = await Member.countDocuments({ group: groupId })
 
-    const count  = await Member.countDocuments({ group: groupId })
     const member = await Member.create({
       group:       groupId,
       name:        name.trim(),
@@ -289,7 +301,7 @@ router.post("/members", protect, async (req, res) => {
       inviteExpiry,
     })
 
-    const inviter = await User.findById(req.userId)
+    const inviter    = await User.findById(req.userId)
     const inviteLink = `${process.env.CLIENT_URL}/accept-invite?token=${inviteToken}&groupId=${groupId}`
 
     try {
@@ -326,21 +338,21 @@ router.post("/members/accept-invite", async (req, res) => {
 
     if (!member) return res.status(400).json({ error: "Invalid or expired invite link" })
 
-    // ✅ Find the user account by email and link it
     const user = await User.findOne({ email: member.contact })
-    console.log("Found user:", user?._id)  // add this
+    console.log("Found user:", user?._id)
     console.log("Member contact:", member.contact)
 
     member.status       = "active"
     member.inviteToken  = undefined
     member.inviteExpiry = undefined
-    if (user) member.userId = user._id  
+    if (user) member.userId = user._id
     await member.save()
     console.log("Saved member userId:", member.userId)
 
-    res.json({ message: "Invite accepted successfully",
+    res.json({
+      message:          "Invite accepted successfully",
       member,
-      needsRegistration: !user 
+      needsRegistration: !user,
     })
   } catch (err) {
     res.status(500).json({ error: err.message })
@@ -348,10 +360,10 @@ router.post("/members/accept-invite", async (req, res) => {
 })
 
 // Temporary debug route — remove after testing
-router.get("/test-email",async (req, res) => {
+router.get("/test-email", async (req, res) => {
   try {
     await sendInviteEmail({
-      toEmail:     "your_actual_email@gmail.com", // ← put your own email here
+      toEmail:     "your_actual_email@gmail.com",
       toName:      "Test User",
       groupName:   "Test Group",
       inviterName: "Admin",
@@ -363,7 +375,7 @@ router.get("/test-email",async (req, res) => {
   }
 })
 
-// PATCH /api/members/:id/role — admin assigns treasurer or changes role
+// PATCH /api/members/:id/role — owner only
 router.patch("/members/:id/role", protect, async (req, res) => {
   try {
     const { role } = req.body
@@ -377,7 +389,6 @@ router.patch("/members/:id/role", protect, async (req, res) => {
     const group = await Group.findOne({ _id: member.group, owner: req.userId })
     if (!group) return res.status(403).json({ error: "Only the group admin can assign roles" })
 
-    // Only one treasurer allowed per group — demote existing treasurer
     if (role === "Treasurer") {
       await Member.updateMany(
         { group: member.group, role: "Treasurer" },
@@ -405,7 +416,7 @@ router.patch("/members/:id/role", protect, async (req, res) => {
   }
 })
 
-// PATCH /api/members/:id
+// PATCH /api/members/:id — owner only
 router.patch("/members/:id", protect, async (req, res) => {
   try {
     const member = await Member.findById(req.params.id).populate("group")
@@ -420,7 +431,7 @@ router.patch("/members/:id", protect, async (req, res) => {
   }
 })
 
-// DELETE /api/members/:id
+// DELETE /api/members/:id — owner only
 router.delete("/members/:id", protect, async (req, res) => {
   try {
     const member = await Member.findById(req.params.id).populate("group")
@@ -450,7 +461,7 @@ router.put("/members/reorder", protect, async (req, res) => {
 
 // ── Meeting routes ────────────────────────────────────────────────────────────
 
-// GET /api/meetings?groupId=xxx
+// GET /api/meetings?groupId=xxx — owner or any active member
 router.get("/meetings", protect, async (req, res) => {
   try {
     const { groupId } = req.query
@@ -468,8 +479,8 @@ router.get("/meetings", protect, async (req, res) => {
         status: "active",
         $or: [
           { userId: req.userId },
-          { contact: currentUser?.email?.toLowerCase() }
-        ]
+          { contact: currentUser?.email?.toLowerCase() },
+        ],
       })
       if (!isMember) return res.status(403).json({ error: "Access denied" })
     }
@@ -481,21 +492,18 @@ router.get("/meetings", protect, async (req, res) => {
   }
 })
 
-// GET single meeting by ID
+// GET /api/meetings/:id
 router.get("/meetings/:id", protect, async (req, res) => {
   try {
-    const meeting = await Meeting.findById(req.params.id);
-
-    if (!meeting) {
-      return res.status(404).json({ error: "Meeting not found" });
-    }
-
-    res.json(meeting);
+    const meeting = await Meeting.findById(req.params.id)
+    if (!meeting) return res.status(404).json({ error: "Meeting not found" })
+    res.json(meeting)
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message })
   }
-});
-// POST /api/meetings — create meeting and notify all active members
+})
+
+// POST /api/meetings — owner or treasurer can create
 router.post("/meetings", protect, async (req, res) => {
   try {
     const { date, time, venue, link, notes, agenda, groupId } = req.body
@@ -505,24 +513,23 @@ router.post("/meetings", protect, async (req, res) => {
     if (!groupId)
       return res.status(400).json({ error: "groupId is required" })
 
-    const group = await Group.findOne({ _id: groupId, owner: req.userId })
-    if (!group) return res.status(404).json({ error: "Group not found" })
-console.log("Creating meeting with link:", link)
+    const { group, error, status } = await getGroupIfAuthorised(groupId, req.userId, ["Treasurer"])
+    if (!group) return res.status(status).json({ error })
 
-    const isPast = new Date(date) < new Date();
+    console.log("Creating meeting with link:", link)
 
+    const isPast = new Date(date) < new Date()
 
     const meeting = await Meeting.create({
-      group: groupId,
-      date, time,
+      group:  groupId,
+      date,   time,
       venue:  venue.trim(),
-      link: link ? link.trim() : null,
+      link:   link ? link.trim() : null,
       agenda: agenda?.trim(),
       notes:  notes?.trim(),
       status: isPast ? "completed" : "upcoming",
     })
 
-    // Notify all active members
     const members = await Member.find({ group: groupId, status: "active" })
     await Promise.allSettled(members.map((m) =>
       sendMeetingNotification({
@@ -532,7 +539,7 @@ console.log("Creating meeting with link:", link)
         meetingDate: formatDate(date),
         meetingTime: time,
         venue,
-        link: req.body.link,
+        link:        req.body.link,
         agenda,
       }).catch((err) => console.error(`Notify failed for ${m.contact}:`, err.message))
     ))
@@ -543,20 +550,22 @@ console.log("Creating meeting with link:", link)
   }
 })
 
-// PATCH /api/meetings/:id — update, add agenda or minutes
+// PATCH /api/meetings/:id — owner or treasurer can update / add minutes
 router.patch("/meetings/:id", protect, async (req, res) => {
   try {
     const meeting = await Meeting.findById(req.params.id).populate("group")
-    if (!meeting || meeting.group.owner.toString() !== req.userId)
-      return res.status(404).json({ error: "Meeting not found" })
+    if (!meeting) return res.status(404).json({ error: "Meeting not found" })
 
-    const wasMinutesEmpty = !meeting.minutes
+    const groupId = meeting.group._id.toString()
+    const { group, error, status } = await getGroupIfAuthorised(groupId, req.userId, ["Treasurer"])
+    if (!group) return res.status(status).json({ error })
+
+    const wasMinutesEmpty = !meeting.minutes?.summary
     Object.assign(meeting, req.body)
     await meeting.save()
 
-    // Email minutes to all active members when first added
     if (wasMinutesEmpty && req.body.minutes) {
-      const members = await Member.find({ group: meeting.group._id, status: "active" })
+      const members = await Member.find({ group: groupId, status: "active" })
       await Promise.allSettled(members.map((m) =>
         sendMeetingMinutes({
           toEmail:     m.contact,
@@ -576,12 +585,15 @@ router.patch("/meetings/:id", protect, async (req, res) => {
   }
 })
 
-// DELETE /api/meetings/:id
+// DELETE /api/meetings/:id — owner or treasurer can delete
 router.delete("/meetings/:id", protect, async (req, res) => {
   try {
     const meeting = await Meeting.findById(req.params.id).populate("group")
-    if (!meeting || meeting.group.owner.toString() !== req.userId)
-      return res.status(404).json({ error: "Meeting not found" })
+    if (!meeting) return res.status(404).json({ error: "Meeting not found" })
+
+    const groupId = meeting.group._id.toString()
+    const { group, error, status } = await getGroupIfAuthorised(groupId, req.userId, ["Treasurer"])
+    if (!group) return res.status(status).json({ error })
 
     await meeting.deleteOne()
     res.json({ message: "Meeting deleted" })
@@ -590,8 +602,7 @@ router.delete("/meetings/:id", protect, async (req, res) => {
   }
 })
 
-// ── Treasurer: flag missing contributions ─────────────────────────────────────
-// POST /api/flag-missing
+// ── Flag missing contributions — owner or treasurer ───────────────────────────
 router.post("/flag-missing", protect, async (req, res) => {
   try {
     const { groupId, month } = req.body
@@ -599,10 +610,9 @@ router.post("/flag-missing", protect, async (req, res) => {
     if (!groupId || !month)
       return res.status(400).json({ error: "groupId and month are required" })
 
-    const group = await Group.findOne({ _id: groupId, owner: req.userId })
-    if (!group) return res.status(404).json({ error: "Group not found" })
+    const { group, error, status } = await getGroupIfAuthorised(groupId, req.userId, ["Treasurer"])
+    if (!group) return res.status(status).json({ error })
 
-    // Safely get Contribution model wherever it was registered
     const Contribution = mongoose.models.Contribution
     if (!Contribution)
       return res.status(500).json({ error: "Contribution model not loaded yet" })
@@ -616,7 +626,6 @@ router.post("/flag-missing", protect, async (req, res) => {
     if (unpaid.length === 0)
       return res.json({ message: "All members have paid this month", flagged: 0 })
 
-    // Send emails to unpaid members
     const results = await Promise.allSettled(unpaid.map((m) =>
       sendMissingContributionEmail({
         toEmail:   m.contact,
@@ -627,9 +636,8 @@ router.post("/flag-missing", protect, async (req, res) => {
       })
     ))
 
-    // Count how many emails actually succeeded
-    const sent   = results.filter(r => r.status === "fulfilled").length
-    const failed = results.filter(r => r.status === "rejected").length
+    const sent   = results.filter((r) => r.status === "fulfilled").length
+    const failed = results.filter((r) => r.status === "rejected").length
 
     if (failed > 0) {
       results.forEach((r, i) => {
