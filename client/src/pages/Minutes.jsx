@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import "../pages/minutes.css";
-import "../pages/group.css";
+import "../pages/g.css";
 
 const API = import.meta.env.VITE_API_URL;
 
