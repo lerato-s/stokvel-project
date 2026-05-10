@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
 
-// Schema for a member inside a group
 const memberSchema = new mongoose.Schema(
   {
     userId: {
@@ -21,19 +20,19 @@ const memberSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["admin", "member", "treasurer"], // allowed roles
+      enum: ["admin", "member", "treasurer"],
       default: "member"
     },
     joinedAt: {
       type: Date,
-      default: Date.now // auto set join time
+      default: Date.now
     },
     isActive: {
       type: Boolean,
-      default: true // active member flag
+      default: true
     }
   },
-  { _id: false } // no separate id for each member
+  { _id: false }
 );
 
-module.exports = memberSchema;
+module.exports = mongoose.model("Member", memberSchema);
