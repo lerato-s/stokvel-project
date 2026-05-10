@@ -30,7 +30,7 @@ app.use(
       const allowedOrigins = [
         process.env.CLIENT_URL,
         "http://localhost:5173",
-        "stokvel-frontend-agdyfaameebwe4f7.brazilsouth-01.azurewebsites.net"
+        "https://stokvel-frontend-agdyfaameebwe4f7.brazilsouth-01.azurewebsites.net"
       ];
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
