@@ -22,6 +22,12 @@ jobs:
         run: |
           npm install --prefix client
           npm run build --prefix client
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_CLIENT_URL: ${{ secrets.VITE_CLIENT_URL }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
 
       - name: Zip artifact for deployment
         run: |
