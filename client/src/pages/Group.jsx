@@ -167,6 +167,12 @@ function GroupsList({ groups, loading, onSelect, onNew,username }) {
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 function Dashboard({ group, members, meetings, onBack }) {
+
+  const [rates, setRates] = useState(null); // initial value
+  useEffect(() => {
+    fetch(`${API}/api/rates`).then(res => res.json()).then(data => setRates(data));
+  }, []);
+
   const pool =
     group.amount && members.length
       ? `R ${(Number(group.amount) * members.length).toLocaleString()}`
@@ -181,6 +187,8 @@ function Dashboard({ group, members, meetings, onBack }) {
     { label: "Monthly Pool",  value: pool },
     { label: "Payout Method", value: group.payoutMethod || "—" },
     { label: "Next Meeting",  value: upcoming.length ? formatDate(upcoming[0].date) : "—" },
+    { label: "Repo Rate", value: rates ? `${rates.repoRate}%` : "—" },
+    { label: "Prime Rate", value: rates ? `${rates.primeRate}%` : "—" },
   ];
 
   const details = [

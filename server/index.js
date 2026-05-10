@@ -2,10 +2,13 @@
 require('dotenv').config({ path: __dirname + '/.env' }); 
 const mongoose = require("mongoose");
 const app = require("./app");
+
 const groupRoutes = require("./routes/groupRoutes");
-const payfastRoutes = require("./routes/payfastRoutes")
+const payfastRoutes = require("./routes/payfastRoutes");
+const rateRoutes = require("./routes/rateRoutes");
 
 app.use("/api", groupRoutes);
+app.use("/api", rateRoutes);
 
 
 // Connect to MongoDB
@@ -16,6 +19,7 @@ mongoose
     const PORT = process.env.PORT || 3001;
     app.listen(PORT, () => {
       console.log("Server running on port " + PORT);
+      require("./services/rateService");
     });
   })
   .catch((err) => {

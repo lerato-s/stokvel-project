@@ -9,6 +9,12 @@ function PuserDashboard({ onSaveGroup }) {
   // `showForm` tracks whether we're on the welcome prompt or the actual form.
   const [showForm, setShowForm] = useState(false);
    const navigate = useNavigate();
+
+   const [rates, setRates] = useState(null);
+
+   useEffect(()=>{
+    fetch("/api/rates").then(res => res.json()).then(data => setRates(data));
+   }, []);
  
   if (showForm) {
     return <CreateGroup groupConfig={{}} onSave={onSaveGroup} />;
