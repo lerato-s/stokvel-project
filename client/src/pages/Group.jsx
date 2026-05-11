@@ -277,7 +277,7 @@ function Dashboard({ group, members, meetings, onBack }) {
 }
 
 // ── Treasurer Members (read + payment status) ────────────────────────────────
-function TreasurerMembers({ members, contributions }) {
+function  TreasurerMembers({ members, contributions }) {
   const month = currentMonth();
   const paidMemberIds = new Set(
     contributions
