@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import GroupForm from "../components/GroupForm";
 import "./g.css";
+import ComplianceReport from '../components/ComplianceReport';
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -57,6 +58,7 @@ const TREASURER_NAV = [
   { id: "t-contributions", icon: "₴", label: "Contributions" },
   { id: "t-meetings",      icon: "◷", label: "Meetings" },
   { id: "disbursements",   icon: "◈", label: "Disbursements" },
+  //{ id: "compliance",      icon: "", label: "Compliance" },   // ✅ add this
 ];
 
 const MEMBER_NAV = [
@@ -461,6 +463,7 @@ function TreasurerDashboard({ group, members, meetings, contributions, disbursem
               ))}
             </ul>
           )}
+          
           <button className="btn-secondary" style={{ marginTop: 16, width: "100%" }} onClick={() => onNavigate("disbursements")}>
             Manage Disbursements →
           </button>
@@ -471,7 +474,7 @@ function TreasurerDashboard({ group, members, meetings, contributions, disbursem
 }
 
 // ── Treasurer Contributions ───────────────────────────────────────────────────
-function TreasurerContributions({ contributions, members, group, onConfirm, onFlagMissing, loading }) {
+function TreasurerContributions({ contributions, members, group, onConfirm, onFlagMissing, onFlagMissed , loading }) {
   const month = currentMonth();
   const paidMemberIds = new Set(
     contributions.filter((c) => c.month === month && c.status === "paid").map((c) => c.member?._id || c.member)
@@ -535,19 +538,29 @@ function TreasurerContributions({ contributions, members, group, onConfirm, onFl
                     <span className="contrib-ref">{record?.reference}</span>
                     <span className="contrib-date">{formatDateTime(record?.paidAt)}</span>
                   </div>
-                ) : (
-                  <div className="contrib-actions">
-                    <span className="status-badge pending">Unpaid</span>
-                    <button
-                      className="btn-pay"
-                      style={{ background: "var(--green, #3dba8c)", color: "#fff" }}
-                      onClick={() => onConfirm(m)}
-                      disabled={loading}
-                    >
-                      ✓ Confirm Payment
-                    </button>
-                  </div>
-                )}
+               ) : (
+                      <div className="contrib-actions">
+                        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                          <span className="status-badge pending">Unpaid</span>
+                          <button
+                            className="btn-pay"
+                            style={{ background: "var(--green, #3dba8c)", color: "#fff" }}
+                            onClick={() => onConfirm(m)}
+                            disabled={loading}
+                          >
+                            ✓ Confirm Payment
+                          </button>
+                          <button
+                            className="btn-flag-missed"
+                            style={{ background: "#dc2626", color: "#fff", padding: "5px 12px", borderRadius: "30px", border: "none", cursor: loading ? "not-allowed" : "pointer" }}
+                            onClick={() => onFlagMissed(m)}
+                            disabled={loading}
+                          >
+                            ⚠️ Flag Missed
+                          </button>
+                        </div>
+                      </div>
+                    )}
               </li>
             );
           })}
@@ -1359,6 +1372,30 @@ export default function Group() {
     } finally { setPayLoading(false); }
   }
 
+  //handleFlagMissed → individual action: marks a single member as missed (and moves them back in the FIFO queue if they are the current recipient
+  async function handleFlagMissed(member) {
+  if (!selectedGroup) return;
+  setPayLoading(true);
+  try {
+    await axios.post(
+      `${API}/api/groups/${selectedGroup._id}/flag-payment`,
+      { memberId: member._id, status: 'missed' },
+      { headers: authHeader() }
+    );
+    showToast(`✓ Payment flagged as missed for ${member.name}`);
+    const { data: newContributions } = await axios.get(
+      `${API}/api/payfast/contributions?groupId=${selectedGroup._id}`,
+      { headers: authHeader() }
+    );
+    setContributions(newContributions);
+  } catch (err) {
+    showToast(`❌ Failed: ${err.response?.data?.error || err.message}`);
+  } finally {
+    setPayLoading(false);
+  }
+}
+
+
   async function saveGroup(form) {
     try {
       const { data } = await axios.post(`${API}/api/group`, form, { headers: authHeader() });
@@ -1559,7 +1596,7 @@ export default function Group() {
               <TreasurerMembers members={members} contributions={contributions} />
             </div>
             <div hidden={activeSection !== "t-contributions"}>
-              <TreasurerContributions contributions={contributions} members={members} group={selectedGroup || {}} onConfirm={handleConfirmPayment} onFlagMissing={handleFlagMissing} loading={payLoading} />
+              <TreasurerContributions contributions={contributions} members={members} group={selectedGroup || {}} onConfirm={handleConfirmPayment} onFlagMissing={handleFlagMissing} onFlagMissed={handleFlagMissed} loading={payLoading} />
             </div>
             <div hidden={activeSection !== "t-meetings"}>
               <Meetings meetings={meetings} onAddMeeting={() => setMeetingModal(true)} onCompleteMeeting={handleCompleteMeeting} />
@@ -1572,7 +1609,7 @@ export default function Group() {
             <div hidden={activeSection !== "m-meetings"}>
               <MemberMeetings meetings={meetings} />
             </div>
-
+            <div hidden={activeSection !== "compliance"}><ComplianceReport groupId={selectedGroup?._id} /> </div>
           </main>
         </div>
       </div>
