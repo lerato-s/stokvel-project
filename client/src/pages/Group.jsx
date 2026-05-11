@@ -113,7 +113,7 @@ function Field({ label, htmlFor, children }) {
   );
 }
 
-// ── Platform landing (no groups yet) ─────────────────────────────────────────
+// ── Platform landing () ─────────────────────────────────────────
 function PlatformLanding({ username, onNew }) {
   return (
     <section className="platform-landing" aria-labelledby="welcome-heading">
@@ -1004,11 +1004,11 @@ function Meetings({ meetings, onAddMeeting, onCompleteMeeting }) {
         <table className="meetings-table">
           <caption className="sr-only">Scheduled meetings</caption>
           <thead>
-            <tr>{["#","Date","Time","Venue","Link","Status","Notes"].map((h) => <th key={h} scope="col">{h}</th>)}</tr>
+            <tr>{["#","Date","Time","Venue","Link","Status","Notes","Minutes"].map((h) => <th key={h} scope="col">{h}</th>)}</tr>
           </thead>
           <tbody>
             {meetings.length === 0 ? (
-              <tr><td colSpan={7} className="empty-state">No meetings scheduled yet.</td></tr>
+              <tr><td colSpan={8} className="empty-state">No meetings scheduled yet.</td></tr>
             ) : (
               meetings.map((m, i) => (
                 <tr key={m._id} className="meeting-row" onClick={() => onCompleteMeeting(m)} style={{ cursor: "pointer" }}>
@@ -1023,6 +1023,11 @@ function Meetings({ meetings, onAddMeeting, onCompleteMeeting }) {
                   </td>
                   <td><span className={`status-badge ${m.status}`}>{m.status}</span></td>
                   <td>{m.notes || "—"}</td>
+                  <td style={{ textAlign: "center" }}>
+                    {m.minutes?.summary || m.minutes?.decisions?.length > 0
+                      ? <span title="Minutes recorded" style={{ fontSize: 16, cursor: "pointer" }}>📄</span>
+                      : <span style={{ color: "var(--text-dim)", fontSize: 12 }}>—</span>}
+                  </td>
                 </tr>
               ))
             )}

@@ -1,157 +1,394 @@
-/* minutes.css */
+/* ── Minutes page (sits inside app-layout, inherits g.css) ──────────────── */
 
-/* PAGE WRAPPER */
 .minutes-page {
-  min-height: 100vh;
-  width: 100%;
-  padding: 30px 40px;
-  background: var(--bg);
-  color: var(--text);
   display: flex;
   flex-direction: column;
-  gap: 20px;
-}
-
-/* TOP BAR */
-.section-header-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: var(--surface);
-  padding: 18px 22px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-}
-
-.section-header-bar h2 {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--gold-light);
-}
-
-/* BACK BUTTON */
-.btn-back {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  padding: 8px 14px;
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: 0.2s ease;
-}
-
-.btn-back:hover {
-  background: var(--surface2);
-  color: var(--text);
-}
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: var(--surface);
-  padding: 18px 22px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-}
-
-/* CARDS */
-.minutes-page .card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 20px;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
-}
-
-/* HEADINGS INSIDE SECTIONS */
-.minutes-page h3 {
-  margin-bottom: 12px;
-  font-size: 18px;
-  color: var(--gold-light);
-}
-
-/* INPUTS + TEXTAREA */
-.minutes-page input,
-.minutes-page textarea {
+  gap: 16px;
+  animation: fadeUp 0.3s ease;
   width: 100%;
+}
+
+/* ── Toast (minutes-specific, doesn't conflict with g.css toast) ─────────── */
+.minutes-toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface2);
+  border: 1px solid var(--gold);
+  color: var(--gold-light);
+  padding: 11px 24px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 9999;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  pointer-events: none;
+}
+
+/* ── Meeting info strip ──────────────────────────────────────────────────── */
+
+
+.minutes-agenda-row {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+/* ── Form layout ─────────────────────────────────────────────────────────── */
+.minutes-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.minutes-section {
+  padding: 20px 24px;
+}
+
+.minutes-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  margin: 0 0 14px;
+}
+
+/* ── Textarea ────────────────────────────────────────────────────────────── */
+.minutes-textarea {
+  width: 100%;
+  min-height: 100px;
   background: var(--surface2);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 10px 12px;
+  border-radius: 8px;
   color: var(--text);
-  font-size: 14px;
+  font-size: 20px;
+  padding: 10px 14px;
+  resize: vertical;
+  font-family: var(--font-body);
+  box-sizing: border-box;
+  transition: border-color 0.2s;
   outline: none;
+}
+
+.minutes-textarea:focus {
+  border-color: var(--gold);
+}
+
+/* ── Decision / Action input rows ───────────────────────────────────────── */
+.minutes-list-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 10px;
 }
 
-.minutes-page textarea {
-  resize: vertical;
-  min-height: 120px;
+.minutes-list-num {
+  font-size: 12px;
+  color: var(--text-dim);
+  min-width: 20px;
+  text-align: right;
+  flex-shrink: 0;
 }
 
-.minutes-page input:focus,
-.minutes-page textarea:focus {
-  border-color: var(--gold);
-}
-
-/* SMALL ACTION BUTTONS */
-.minutes-page button {
-  cursor: pointer;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
+.minutes-input {
+  flex: 1;
   background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
   color: var(--text);
-  padding: 8px 12px;
-  font-size: 13px;
-  transition: 0.2s;
+  font-size: 20px;
+  padding: 9px 12px;
+  font-family: var(--font-body);
+  transition: border-color 0.2s;
+  outline: none;
 }
 
-.minutes-page button:hover {
-  background: rgba(155, 127, 212, 0.15);
+.minutes-input:focus {
   border-color: var(--gold);
 }
 
-/* PRIMARY SAVE BUTTON */
-.btn-primary {
-  background: var(--gold);
-  color: #0e0c14;
-  font-weight: 700;
-  padding: 14px 18px;
-  border-radius: var(--radius);
+.minutes-remove-btn {
+  background: none;
   border: none;
+  color: var(--text-dim);
   cursor: pointer;
-  transition: 0.2s ease;
-  align-self: flex-end;
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: color 0.2s, background 0.2s;
+  flex-shrink: 0;
 }
 
-.btn-primary:hover {
-  background: var(--gold-light);
+.minutes-remove-btn:hover {
+  color: var(--red);
+  background: rgba(224, 92, 92, 0.1);
 }
 
-/* ATTENDANCE ROWS */
-.minutes-page .attendance-row {
+.minutes-add-btn {
+  margin-top: 6px;
+  font-size: 12px;
+  padding: 6px 14px;
+}
+
+/* ── Attendance ──────────────────────────────────────────────────────────── */
+.minutes-attendance-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.minutes-attendance-summary {
+  display: flex;
+  gap: 14px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.minutes-attendance-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.minutes-attendance-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.minutes-member-info {
+  display: flex;
+  align-items: center;
+  font-size: 20px;
+  gap: 10px;
+}
+
+.minutes-attendance-btns {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Attendance toggle buttons */
+.minutes-att-btn {
+  font-size: 20px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: none;
+  cursor: pointer;
+  color: var(--text-dim);
+  font-family: var(--font-body);
+  transition: all 0.15s;
+}
+
+.minutes-att-btn:hover {
+  border-color: var(--text-muted);
+  color: var(--text);
+}
+
+.minutes-att-btn.present.selected {
+  background: rgba(76, 175, 125, 0.15);
+  border-color: var(--green);
+  color: var(--green);
+  font-weight: 600;
+}
+
+.minutes-att-btn.late.selected {
+  background: rgba(224, 181, 76, 0.12);
+  border-color: var(--yellow);
+  color: var(--yellow);
+  font-weight: 600;
+}
+
+.minutes-att-btn.absent.selected {
+  background: rgba(224, 92, 92, 0.12);
+  border-color: var(--red);
+  color: var(--red);
+  font-weight: 600;
+}
+
+/* Label colours (reused in document view too) */
+.present-label { color: var(--green); }
+.late-label    { color: var(--yellow); }
+.absent-label  { color: var(--red); }
+
+/* ── Save row ─────────────────────────────────────────────────────────────── */
+.minutes-save-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding-bottom: 40px;
+}
+
+/* ── Minutes Document (formatted read-only view) ─────────────────────────── */
+.minutes-document {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 40px 48px;
+}
+
+.minutes-doc-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.minutes-doc-logo {
+  font-size: 12px;
+  color: var(--gold);
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  margin-bottom: 10px;
+}
+
+.minutes-doc-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 12px;
+  color: var(--text);
+}
+
+.minutes-doc-meta {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.minutes-doc-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 24px 0;
+}
+
+.minutes-doc-section {
+  margin-bottom: 4px;
+}
+
+.minutes-doc-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--gold);
+  margin: 0 0 12px;
+}
+
+.minutes-doc-body {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--text);
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.minutes-doc-attendance-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.minutes-doc-attendance-label {
+  font-size: 12px;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+.minutes-doc-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.minutes-doc-list li {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.minutes-doc-role {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.minutes-doc-numbered {
+  padding-left: 20px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.minutes-doc-numbered li {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.minutes-doc-empty {
+  font-size: 13px;
+  color: var(--text-dim);
+  font-style: italic;
+  margin: 0;
+}
+
+.minutes-doc-footer {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 10px;
-  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-dim);
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
 }
 
-.minutes-page .attendance-row span {
-  font-size: 14px;
-  color: var(--text);
-}
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .minutes-document {
+    padding: 24px 16px;
+  }
 
-/* ATTENDANCE BUTTON GROUP */
-.minutes-page .attendance-buttons button {
-  margin-left: 6px;
-  font-size: 12px;
-  padding: 6px 10px;
-}
+  .minutes-doc-attendance-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
 
-/* ACTIVE STATE (you already use bold) */
-.minutes-page .attendance-buttons button.active {
-  background: rgba(155, 127, 212, 0.2);
-  border-color: var(--gold);
-  font-weight: bold;
+  .minutes-attendance-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .minutes-info-row {
+    gap: 16px;
+  }
+
+  .minutes-doc-meta {
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .minutes-save-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
