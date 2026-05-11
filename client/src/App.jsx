@@ -7,6 +7,7 @@ import ResetPassword from './pages/ResetPassword'
 import Home from './pages/Home'
 import Minutes from './pages/Minutes'
 import AcceptInvite from './pages/AcceptInvite'
+import ComplianceReportPage from './components/ComplianceReport';
 
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
@@ -25,6 +26,7 @@ function App() {
           <Route path="/home" element={<Home />} />
           <Route path="/meetings/:meetingId/minutes" element={<Minutes />} />
           <Route path="/accept-invite" element={<AcceptInvite />} />
+          
       </Routes>
     </BrowserRouter>
   )
