@@ -230,3 +230,132 @@ html, body {
   color: var(--gold-light);
   text-decoration: underline;
 }
+
+/* Card */
+.login-card {
+  background: #1e2d4d;
+  border: 0.5px solid rgba(133, 87, 225, 0.3);
+  border-radius: 16px;
+  padding: 2rem 2.5rem;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+/* Inputs */
+.login-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.07);
+  border: 0.5px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #fff;
+  font-size: 14px;
+  outline: none;
+}
+
+.login-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.login-input:focus {
+  border-color: rgba(133, 87, 225, 0.6);
+}
+
+/* Primary button */
+.login-btn-primary {
+  width: 100%;
+  background: #8557e1;
+  border: none;
+  border-radius: 10px;
+  padding: 12px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.login-btn-primary:hover {
+  background: #9d6fef;
+}
+
+/* Google button */
+.login-btn-google {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  width: 100%;
+  background: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 11px 24px;
+  color: #1a2238;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.login-btn-google:hover {
+  background: #f0f0f0;
+}
+
+/* Link-style button (forgot password, back) */
+.login-btn-link {
+  background: none;
+  border: none;
+  color: rgba(133, 87, 225, 0.9);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.login-btn-link:hover {
+  color: #a87ff5;
+  text-decoration: underline;
+}
+
+/* Labels */
+.login-label {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+}
+
+/* Divider */
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.login-divider-line {
+  flex: 1;
+  height: 0.5px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.login-divider-text {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 12px;
+}
+
+/* Error and success messages */
+.login-error {
+  color: #f09595;
+  font-size: 13px;
+  margin: 0;
+  text-align: center;
+}
+
+.login-success {
+  color: #5dcaa5;
+  font-size: 14px;
+  text-align: center;
+}
