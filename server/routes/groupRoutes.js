@@ -157,30 +157,36 @@ router.post("/group", protect, async (req, res) => {
   }
 });
 
-// GET /api/groups – FIXED: exclude owned groups from memberGroups
+// GET /api/groups 
 router.get("/groups", protect, async (req, res) => {
   try {
-    const ownedGroups = await Group.find({ owner: req.userId }).sort("-createdAt");
+    
+    const GroupModel  = mongoose.models.Group;
+    const MemberModel = mongoose.models.Member;
 
-    const memberQuery = { status: "active", userId: req.userId };
-    try {
-      const currentUser = await User.findById(req.userId).select("email");
-      if (currentUser?.email) {
-        memberQuery.$or = [
-          { userId: req.userId },
-          { contact: currentUser.email.toLowerCase() },
-        ];
-        delete memberQuery.userId;
-      }
-    } catch (userErr) {
-      console.error("User lookup failed, falling back to userId only:", userErr.message);
+    if (!GroupModel || !MemberModel) {
+      return res.status(500).json({ error: "Models not loaded yet" });
     }
 
-    const memberships = await Member.find(memberQuery).populate("group");
-    // Exclude groups that the user already owns (avoids duplicates)
+    const ownedGroups = await GroupModel.find({ owner: req.userId }).sort("-createdAt");
+
+    const currentUser = await User.findById(req.userId).select("email");
+
+    const memberQuery = { status: "active" };
+    if (currentUser?.email) {
+      memberQuery.$or = [
+        { userId: req.userId },
+        { contact: currentUser.email.toLowerCase() },
+      ];
+    } else {
+      memberQuery.userId = req.userId;
+    }
+
+    const memberships = await MemberModel.find(memberQuery).populate("group");
+
     const memberGroups = memberships
       .map((m) => m.group)
-      .filter((g) => g.owner.toString() !== req.userId);
+      .filter((g) => g && g.owner && g.owner.toString() !== req.userId);
 
     res.json([...ownedGroups, ...memberGroups]);
   } catch (err) {
