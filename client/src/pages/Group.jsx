@@ -1403,7 +1403,7 @@ export default function Group() {
 
   async function saveGroup(form) {
     try {
-      const { data } = await axios.post(`${API}/api/group`, form, { headers: authHeader() });
+      const { data } = await axios.post(`${API}/api/groups`, form, { headers: authHeader() });
       setGroups((prev) => [data, ...prev]);
       setShowGroupForm(false);
       showToast(`✓ "${data.name}" created`);

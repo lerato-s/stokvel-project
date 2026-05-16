@@ -1,28 +1,30 @@
-// Entry point: connects to database and starts server
-require('dotenv').config( ); 
-const mongoose = require("mongoose");
-const app = require("./app");
+// server.js
+// Entry point
 
-const groupRoutes = require("./routes/groupRoutes");
-const payfastRoutes = require("./routes/payfastRoutes");
-const rateRoutes = require("./routes/rateRoutes");
+require("dotenv").config()
 
-app.use("/api", groupRoutes);
-app.use("/api", rateRoutes);
+const mongoose = require("mongoose")
 
+const app = require("./app")
 
-// Connect to MongoDB
+// DATABASE CONNECTION
+
 mongoose
   .connect(process.env.MONGODB_URI)
   .then(() => {
-    console.log("Database connected successfully");
-    const PORT = process.env.PORT || 3001;
+    console.log("Database connected successfully")
+
+    const PORT = process.env.PORT || 3001
+
     app.listen(PORT, () => {
-      console.log("Server running on port " + PORT);
-      require("./services/rateService");
-    });
+      console.log(`Server running on port ${PORT}`)
+
+      // Start scheduled services
+      require("./services/rateService")
+    })
   })
-  .catch((err) => {
-    console.error("Database connection failed:", err);
-    process.exit(1);
-  });
+  .catch((error) => {
+    console.error("Database connection failed:", error.message)
+
+    process.exit(1)
+  })

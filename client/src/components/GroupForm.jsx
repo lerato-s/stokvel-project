@@ -15,6 +15,7 @@ const EMPTY_FORM = {
   freq: "",
   cycle: "",
   max: "",
+  meetDay: "",
   payoutMethod: "",
   rules: "",
 };
@@ -37,6 +38,7 @@ export default function GroupForm({ initialValues = {}, onSave, onCancel, isSavi
       "freq",
       "cycle",
       "max",
+      "meetDay",
       "payoutMethod",
       "rules",
     ];
