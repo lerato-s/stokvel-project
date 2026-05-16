@@ -1,61 +1,83 @@
-const dotenv = require("dotenv");
-dotenv.config();
+// app.js
 // Creates and configures the Express app
 
-const express = require("express");
-const cors = require("cors");
+require("dotenv").config()
 
+const express = require("express")
+const cors = require("cors")
 
-// Load environment variables
+// Route imports
+const authRoutes = require("./routes/authRoutes")
+const userRoutes = require("./routes/userRoutes")
+const groupRoutes = require("./routes/groupRoutes")
+const payfastRoutes = require("./routes/payfastRoutes")
+const rateRoutes = require("./routes/rateRoutes")
 
+const app = express()
 
-// Import route modules
-const authRoutes = require("./routes/authRoutes");
-const userRoutes = require("./routes/userRoutes");
-const groupRoutes = require("./routes/groupRoutes");
-const payfastRoutes = require("./routes/payfastRoutes");
+// MIDDLEWARE
 
+// Parse JSON
+app.use(express.json())
 
+// Parse form data
+app.use(express.urlencoded({ extended: false }))
 
-const app = express();
+// CORS CONFIGURATION
 
-// Parse JSON and form data
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-
-// Configure CORS for frontend communication
 app.use(
   cors({
-    origin: function(origin, callback) {
+    origin: function (origin, callback) {
       const allowedOrigins = [
         process.env.CLIENT_URL,
         "http://localhost:5173",
-        "https://stokvel-frontend-agdyfaameebwe4f7.brazilsouth-01.azurewebsites.net"
-      ];
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
+        "https://stokvel-frontend-agdyfaameebwe4f7.brazilsouth-01.azurewebsites.net",
+      ]
+
+      // Allow Postman / mobile apps
+      if (!origin) {
+        return callback(null, true)
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true)
       } else {
-        callback(new Error('Not allowed by CORS'));
+        callback(new Error("Not allowed by CORS"))
       }
     },
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+    ],
+
     credentials: true,
   })
-);
+)
 
-// Simple health check endpoint
-app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok" });
-});
+// HEALTH CHECK
 
+app.get("/api/health", (req, res) => {
+  res.json({
+    success: true,
+    message: "API is running",
+  })
+})
 
-// Mount route modules under API paths
-app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api", groupRoutes);
-app.use("/api/payfast", payfastRoutes);
+// ROUTES
 
+app.use("/api/auth", authRoutes)
 
+app.use("/api/users", userRoutes)
 
-module.exports = app;
+app.use("/api/groups", groupRoutes)
+
+app.use("/api/payfast", payfastRoutes)
+
+app.use("/api/rates", rateRoutes)
+
+// EXPORT APP
+
+module.exports = app

@@ -3,6 +3,7 @@
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const UserModel = require("../models/users.js");
+const Member = require("../models/member.js");   // ✅ FIX: import Member model
 const admin = require("../firebaseAdmin");
 
 // Register new user
@@ -10,12 +11,10 @@ const registerUser = async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
-    // Validate input
     if (!username || !email || !password) {
       return res.status(400).json({ error: "All fields are required" });
     }
 
-    // Create user
     const user = await UserModel.create({
       username,
       email,
@@ -23,24 +22,18 @@ const registerUser = async (req, res) => {
       role: "member",
     });
 
+    // Link any existing Member records to this user
     await Member.updateMany(
-      { 
-        contact: user.email.toLowerCase(), 
-        userId: { $exists: false }   // only unfilled ones
-      },
+      { contact: user.email.toLowerCase(), userId: { $exists: false } },
       { $set: { userId: user._id } }
-    )
+    );
 
-    // Remove password before sending response
     const { password: _, ...safeUser } = user._doc;
-
     return res.status(201).json(safeUser);
   } catch (error) {
-    // Handle duplicate user
     if (error.code === 11000) {
       return res.status(400).json({ error: "This user already exists" });
     }
-
     return res.status(400).json({ error: error.message });
   }
 };
@@ -50,34 +43,26 @@ const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Validate input
     if (!email || !password) {
-      return res.status(400).json({
-        error: "Please fill in all required fields",
-      });
+      return res.status(400).json({ error: "Please fill in all required fields" });
     }
 
-    // Find user
     const user = await UserModel.findOne({ email });
     if (!user) {
       return res.status(401).json({ error: "User not found" });
     }
 
+    // Link any existing Member records to this user
     await Member.updateMany(
-      { 
-        contact: user.email.toLowerCase(), 
-        userId: { $exists: false }   // only unfilled ones
-      },
+      { contact: user.email.toLowerCase(), userId: { $exists: false } },
       { $set: { userId: user._id } }
-    )
+    );
 
-    // Check password
     const isMatch = await user.matchPassword(password);
     if (!isMatch) {
       return res.status(401).json({ error: "Password is incorrect" });
     }
 
-    // Generate JWT token
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
@@ -97,29 +82,24 @@ const loginUser = async (req, res) => {
   }
 };
 
+// Google authentication
 const AuthenticateWithGoogle = async (req, res) => {
   try {
     const { idToken } = req.body;
-
-    // 1. Verify the Google token with Firebase
     const decoded = await admin.auth().verifyIdToken(idToken);
     const { email, name, uid } = decoded;
 
-    // 2. Find or create user in MongoDB
     let user = await UserModel.findOne({ email });
-
     if (!user) {
-      // New user — create them automatically
       user = await UserModel.create({
         username: name || email.split("@")[0],
         email,
-        password: uid, // Firebase uid as placeholder
+        password: uid,
         role: "member",
         firebaseUid: uid,
       });
     }
 
-    // Generate JWT token
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
@@ -140,23 +120,15 @@ const AuthenticateWithGoogle = async (req, res) => {
   }
 };
 
-// Generate password reset token
+// Forgot password
 const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
-
-    if (!email) {
-      return res.status(400).json({ error: "Email is required" });
-    }
+    if (!email) return res.status(400).json({ error: "Email is required" });
 
     const user = await UserModel.findOne({ email });
-    if (!user) {
-      return res.status(404).json({
-        error: "No account found with this email",
-      });
-    }
+    if (!user) return res.status(404).json({ error: "No account found with this email" });
 
-    // Generate reset token and expiry
     const resetToken = crypto.randomBytes(32).toString("hex");
     const resetTokenExpiry = Date.now() + 3600000;
 
@@ -173,37 +145,27 @@ const forgotPassword = async (req, res) => {
   }
 };
 
-// Reset password using token
+// Reset password
 const resetPassword = async (req, res) => {
   try {
     const { email, token, newPassword } = req.body;
-
     if (!email || !token || !newPassword) {
       return res.status(400).json({ error: "All fields are required" });
     }
-
     if (newPassword.length < 6) {
-      return res.status(400).json({
-        error: "Password must be at least 6 characters",
-      });
+      return res.status(400).json({ error: "Password must be at least 6 characters" });
     }
 
-    // Find user with valid token
     const user = await UserModel.findOne({
       email,
       resetToken: token,
       resetTokenExpiry: { $gt: Date.now() },
     });
+    if (!user) return res.status(400).json({ error: "Invalid or expired token" });
 
-    if (!user) {
-      return res.status(400).json({ error: "Invalid or expired token" });
-    }
-
-    // Update password and clear token
     user.password = newPassword;
     user.resetToken = undefined;
     user.resetTokenExpiry = undefined;
-
     await user.save();
 
     return res.json({ message: "Password reset successful" });

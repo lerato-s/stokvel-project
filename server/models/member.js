@@ -5,8 +5,7 @@ const memberSchema = new mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Users",
-      required: true
+      ref: "Users"
     },
     username: {
       type: String,
@@ -21,19 +20,40 @@ const memberSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["admin", "member", "treasurer"], // allowed roles
+      enum: ["admin", "member", "treasurer"],
       default: "member"
     },
     joinedAt: {
       type: Date,
-      default: Date.now // auto set join time
+      default: Date.now
     },
     isActive: {
       type: Boolean,
-      default: true // active member flag
-    }
+      default: false
+    },
+    inviteToken: {
+      type: String
+    },
+    inviteExpiry: {
+      type: Date
+    },
+    contributions: [
+      {
+        month: { type: String, required: true },
+        amount: { type: Number, required: true },
+        dueDate: { type: Date, required: true },
+        status: {
+          type: String,
+          enum: ["paid", "missed", "overdue"],
+          default: "missed"
+        },
+        paidAt: { type: Date },
+        reminderSent: { type: Boolean, default: false }
+      }
+    ]
   },
-  { _id: false } // no separate id for each member
+  { _id: false }
 );
 
-module.exports = memberSchema;
+//Export as a model, not just schema
+module.exports = mongoose.model("Member", memberSchema);

@@ -1,4 +1,4 @@
-
+require("dotenv").config({ path: require("path").resolve(__dirname, ".env") });
 const admin = require("firebase-admin");
 
 if (process.env.NODE_ENV !== "test") {
