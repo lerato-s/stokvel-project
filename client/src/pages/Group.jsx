@@ -542,6 +542,7 @@ function TreasurerContributions({ contributions, members, group, onConfirm, onFl
                       <div className="contrib-actions">
                         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                           <span className="status-badge pending">Unpaid</span>
+                          
                           <button
                             className="btn-pay"
                             style={{ background: "var(--green, #3dba8c)", color: "#fff" }}
@@ -1051,7 +1052,7 @@ function Meetings({ meetings, onAddMeeting, onCompleteMeeting }) {
   );
 }
 
-function Contributions({ contributions, members, group, onPay, loading, onFlagMissing }) {
+function Contributions({ contributions, members, group, onPay, loading, onFlagMissing , onConfirm, onFlagMissed, currentUserEmail }) {
   const month = currentMonth();
   const paidMemberIds = new Set(
     contributions.filter((c) => c.month === month && c.status === "paid").map((c) => c.member?._id || c.member)
@@ -1111,7 +1112,9 @@ function Contributions({ contributions, members, group, onPay, loading, onFlagMi
                 ) : (
                   <div className="contrib-actions">
                     <span className="status-badge pending">Unpaid</span>
+                    {m.contact === currentUserEmail && (
                     <button className="btn-pay" onClick={() => onPay(m)} disabled={loading}>Pay R{group.amount}</button>
+                    )}
                   </div>
                 )}
               </li>
@@ -1618,7 +1621,7 @@ export default function Group() {
               <Meetings meetings={meetings} onAddMeeting={() => setMeetingModal(true)} onCompleteMeeting={handleCompleteMeeting} />
             </div>
             <div hidden={activeSection !== "contributions"}>
-              <Contributions contributions={contributions} members={members} group={selectedGroup || {}} onPay={handlePay} onFlagMissing={handleFlagMissing} loading={payLoading} />
+              <Contributions contributions={contributions} members={members} group={selectedGroup || {}} onPay={handlePay} onFlagMissing={handleFlagMissing} loading={payLoading} currentUserEmail={currentUserEmail} />
             </div>
             <div hidden={activeSection !== "disbursements"}>
               <Disbursements disbursements={disbursements} members={members} group={selectedGroup || {}} contributions={contributions} onDisburse={handleDisburse} onMarkPaid={handleMarkPaid} loading={payLoading} />

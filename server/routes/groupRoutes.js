@@ -532,7 +532,7 @@ router.patch("/meetings/:id", protect, async (req, res) => {
     if (!meeting) return res.status(404).json({ error: "Meeting not found" });
 
     const groupId = meeting.group._id.toString();
-    const { group, error, status } = await getGroupIfAuthorised(groupId, req.userId, ["Treasurer"]);
+    const { group, error, status } = await getGroupIfAuthorised(groupId, req.userId, ["Admin","Treasurer"]);
     if (!group) return res.status(status).json({ error });
 
     const wasMinutesEmpty = !meeting.minutes?.summary;
