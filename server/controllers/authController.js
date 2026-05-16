@@ -20,7 +20,7 @@ const registerUser = async (req, res) => {
       username,
       email,
       password,
-      role: "member",
+      // role: "member",
     });
 
     await Member.updateMany(
@@ -114,9 +114,14 @@ const AuthenticateWithGoogle = async (req, res) => {
         username: name || email.split("@")[0],
         email,
         password: uid, // Firebase uid as placeholder
-        role: "member",
+        //role: "member",
         firebaseUid: uid,
       });
+    }else{
+      if (!user.firebaseUid) {
+        user.firebaseUid = uid;
+        await user.save();
+      }
     }
 
     // Generate JWT token

@@ -201,7 +201,7 @@ router.patch("/group/:id", protect, async (req, res) => {
     const group = await Group.findOneAndUpdate(
       { _id: req.params.id, owner: req.userId },
       req.body,
-      { new: true }
+      { returnDocument: "after" }
     );
     if (!group) return res.status(404).json({ error: "Group not found" });
     res.json(group);

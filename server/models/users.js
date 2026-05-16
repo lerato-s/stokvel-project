@@ -3,11 +3,11 @@ const bcrypt = require('bcryptjs') //Aphiwe addded this for password hashing
 
 
 const UserSchema = new mongoose.Schema({
-    username: { type: String, required: true, unique: true },
+    username: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true},
-    role: { type: String, enum: ['admin', 'member', 'treasurer'], required: true },
-    firebaseUid: {type: String , desult:null},
+    role: { type: String, /* enum: ['admin', 'member', 'treasurer'],*/ deafult : null },
+    firebaseUid: {type: String , default:null},
     resetToken: { type: String , default: null },
     resetTokenExpiry: { type: Date, default: null }
 });

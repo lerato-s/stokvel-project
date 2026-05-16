@@ -1241,8 +1241,14 @@ function Disbursements({ disbursements, members, group, contributions, onDisburs
 
 // ── Root ──────────────────────────────────────────────────────────────────────
 export default function Group() {
-  const currentUser      = JSON.parse(localStorage.getItem("user") || "{}");
-  const currentUserEmail = currentUser.email || currentUser.user?.email || "";
+  const currentUser = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("user") || "{}");
+    } catch {
+      return {};
+    }
+  })();
+  const currentUserEmail =( currentUser.email || currentUser.user?.email || "").toLowerCase();
   const currentUsername  = currentUser.username || currentUser.user?.username || "";
 
   const [activeSection,  setActiveSection]  = useState("groups");
@@ -1266,6 +1272,7 @@ export default function Group() {
   const [disbursements,  setDisbursements]  = useState([]);
   const [payLoading,     setPayLoading]     = useState(false);
   const [sidebarOpen,    setSidebarOpen]    = useState(false);
+  const [membersLoading,   setMembersLoading]   = useState(false);
 
   const navigate = useNavigate();
 
@@ -1275,7 +1282,7 @@ export default function Group() {
   }, []);
 
   // Current user's role in the selected group
-  const myMemberRole = members.find((m) => m.contact === currentUserEmail)?.role || "Member";
+  const myMemberRole = members.find((m) => m.contact === currentUserEmail)?.role || null;
   const navItems     = getNavItems(selectedGroup ? myMemberRole : "Member");
 
   useEffect(() => {
@@ -1287,6 +1294,7 @@ export default function Group() {
 
   useEffect(() => {
     if (!selectedGroup) return;
+    setMembersLoading(true);
     const h = { headers: authHeader() };
     Promise.all([
       axios.get(`${API}/api/members?groupId=${selectedGroup._id}`, h),
@@ -1300,7 +1308,8 @@ export default function Group() {
         setContributions(cRes.data);
         setDisbursements(dRes.data);
       })
-      .catch(() => showToast("Failed to load group data"));
+      .catch(() => showToast("Failed to load group data"))
+      .finally(() => setMembersLoading(false));
   }, [selectedGroup]);
 
   useEffect(() => {
@@ -1545,7 +1554,7 @@ export default function Group() {
                 <span className="sidebar-user-name">{currentUsername || "User"}</span>
                 <span className="sidebar-user-email">{currentUserEmail}</span>
               </div>
-              <span className={`sidebar-role-badge ${myMemberRole.toLowerCase()}`}>{myMemberRole}</span>
+              <span className={`sidebar-role-badge ${(myMemberRole || "member").toLowerCase()} |`}>{myMemberRole  || ""}</span>
             </div>
           </footer>
         </aside>
@@ -1559,23 +1568,42 @@ export default function Group() {
             </div>
 
             {/* Overview — routed by role */}
+            
             <div hidden={activeSection !== "dashboard"}>
-              {selectedGroup && myMemberRole === "Admin" && (
+              {selectedGroup && membersLoading && (
+                <div style={{ 
+                  display: "flex", alignItems: "center", justifyContent: "center", 
+                  height: "60vh", flexDirection: "column", gap: 16 
+                }}>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: "50%",
+                    border: "3px solid rgba(155,127,212,0.2)",
+                    borderTop: "3px solid #9b7fd4",
+                    animation: "spin 1s linear infinite"
+                  }} />
+                  <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Loading...</p>
+                  <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                </div>
+              )}
+              {selectedGroup && !membersLoading && myMemberRole === "Admin" && (
                 <Dashboard group={selectedGroup} members={members} meetings={meetings} onBack={handleBack} />
               )}
-              {selectedGroup && myMemberRole === "Treasurer" && (
+              {selectedGroup && !membersLoading && myMemberRole === "Treasurer" && (
                 <TreasurerDashboard
                   group={selectedGroup} members={members} meetings={meetings}
                   contributions={contributions} disbursements={disbursements}
                   onBack={handleBack} onNavigate={setActiveSection}
                 />
               )}
-              {selectedGroup && myMemberRole === "Member" && (
+              {selectedGroup && !membersLoading && myMemberRole === "Member" && (
                 <MemberDashboard
                   group={selectedGroup} members={members} meetings={meetings}
                   contributions={contributions} currentUserEmail={currentUserEmail}
                   onBack={handleBack} onNavigate={setActiveSection}
                 />
+              )}
+              {selectedGroup && !membersLoading && !myMemberRole && members.length > 0 && (
+                <p className="empty-state">Unable to determine your role in this group.</p>
               )}
             </div>
 

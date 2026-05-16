@@ -1,5 +1,6 @@
 // Handles PayFast contribution and payout routes
 const {sendContributionReceiptEmail} = require("../services/emailService");
+const User = require("../models/users")
 const express = require("express");
 const mongoose = require("mongoose");
 const crypto = require("crypto");
@@ -118,10 +119,12 @@ const Disbursement =
 
 // Creates PayFast signature from payment data
 function generateSignature(data, passphrase = "") {
-  // Only remove signature field - keep empty values
+  
   const filtered = Object.fromEntries(
     Object.entries(data).filter(([key]) => key !== "signature")
   );
+
+  const sortedKeys = Object.keys(filtered).sort();
 
   let str = Object.entries(filtered)
     .map(
@@ -185,7 +188,7 @@ router.post("/contribute", protect, async (req, res) => {
         { contact: currentUser?.email?.toLowerCase() }
       ]
     })
-    console.log("myMember:", myMember)
+    
 
     if (!isOwner) {
       if (!myMember)
@@ -239,8 +242,8 @@ router.post("/contribute", protect, async (req, res) => {
       notify_url: `${BACKEND_URL}/api/payfast/itn`,
       name_first: member.name.split(" ")[0],
       name_last: member.name.split(" ").slice(1).join(" ") || "Member",
-      email_address: isOwner
-        ? `member+${member._id}@stokvel.app`
+      email_address: PAYFAST_SANDBOX
+        ? "sbtu01@payfast.io"
         : member.contact,
       m_payment_id: reference,
       amount: Number(group.amount).toFixed(2),
@@ -306,7 +309,7 @@ router.post("/itn", express.urlencoded({ extended: false }), async (req, res) =>
         pfPaymentId: data.pf_payment_id,
         paidAt: new Date(),
       },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     if (!contribution) {
@@ -345,22 +348,40 @@ router.post("/itn", express.urlencoded({ extended: false }), async (req, res) =>
 // Get contributions for a group
 router.get("/contributions", protect, async (req, res) => {
   try {
-    const { groupId } = req.query
-    if (!groupId) return res.status(400).json({ error: "groupId required" })
+    const { groupId } = req.query;
+    if (!groupId) return res.status(400).json({ error: "groupId required" });
 
-    const { group, allowed } = await canAccessGroup(groupId, req.userId)
-    if (!group) return res.status(404).json({ error: "Group not found" })
-    if (!allowed) return res.status(403).json({ error: "Access denied" })
+    const Group  = getGroup();
+    const Member = getMember();
+    //const User = mongoose.models.User || mongoose.model("user");
+
+    const group = await Group.findById(groupId);
+    if (!group) return res.status(404).json({ error: "Group not found" });
+
+    const isOwner = group.owner.toString() === req.userId;
+    if (!isOwner) {
+      const currentUser = await User.findById(req.userId).select("email")
+      const isMember = await Member.findOne({
+        group: groupId,
+        status: "active",
+        $or: [
+          { userId: req.userId },
+          { contact: currentUser?.email?.toLowerCase() }
+        ],
+      });
+      if (!isMember) return res.status(403).json({ error: "Access denied" });
+    }
 
     const contributions = await Contribution.find({ group: groupId })
       .populate("member", "name initials")
-      .sort("-paidAt")
+      .sort("-paidAt");
 
-    res.json(contributions)
+    res.json(contributions);
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    console.error("Error fetching contributions:", err);
+    res.status(500).json({ error: err.message });
   }
-})
+});
 // Creates disbursement record
 router.post("/disburse", protect, async (req, res) => {
   try {
@@ -372,6 +393,7 @@ router.post("/disburse", protect, async (req, res) => {
 
     const Group = getGroup();
     const Member = getMember();
+    
 
     const group = await Group.findOne({ _id: groupId, owner: req.userId });
     if (!group) {
@@ -475,21 +497,40 @@ router.patch("/disburse/:id", protect, async (req, res) => {
 // Get disbursements for a group
 router.get("/disbursements", protect, async (req, res) => {
   try {
-    const { groupId } = req.query
-    if (!groupId) return res.status(400).json({ error: "groupId required" })
+    const { groupId } = req.query;
+    if (!groupId) return res.status(400).json({ error: "groupId required" });
 
-    const { group, allowed } = await canAccessGroup(groupId, req.userId)
-    if (!group) return res.status(404).json({ error: "Group not found" })
-    if (!allowed) return res.status(403).json({ error: "Access denied" })
+    const Group  = getGroup();
+    const Member = getMember();
+    //const User = mongoose.models.User || mongoose.model("user");
+
+    
+    const group = await Group.findById(groupId);
+    if (!group) return res.status(404).json({ error: "Group not found" });
+
+    const isOwner = group.owner.toString() === req.userId;
+    if (!isOwner) {
+      const currentUser = await User.findById(req.userId).select("email")
+      const isMember = await Member.findOne({
+        group: groupId,
+        status: "active",
+        $or: [
+          { userId: req.userId },
+          { contact: currentUser?.email?.toLowerCase() }
+        ],
+      });
+      if (!isMember) return res.status(403).json({ error: "Access denied" });
+    }
 
     const disbursements = await Disbursement.find({ group: groupId })
       .populate("member", "name initials")
-      .sort("-createdAt")
+      .sort("-createdAt");
 
-    res.json(disbursements)
+    res.json(disbursements);
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    console.error("Error fetching contributions:", err);
+    res.status(500).json({ error: err.message });
   }
-})
+});
 
 module.exports = router;
