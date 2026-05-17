@@ -12,6 +12,7 @@ const userRoutes = require("./routes/userRoutes")
 const groupRoutes = require("./routes/groupRoutes")
 const payfastRoutes = require("./routes/payfastRoutes")
 const rateRoutes = require("./routes/rateRoutes")
+const savingsRoutes = require("./routes/savingsRoutes")
 
 const app = express()
 
@@ -77,6 +78,8 @@ app.use("/api/groups", groupRoutes)
 app.use("/api/payfast", payfastRoutes)
 
 app.use("/api/rates", rateRoutes)
+
+app.use("/api/savings", savingsRoutes)
 
 // EXPORT APP
 

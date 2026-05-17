@@ -623,10 +623,21 @@ function MemberDashboard({ group, members, meetings, contributions, currentUserE
   const myPosition       = me ? members.findIndex((m) => m._id === me._id) + 1 : null;
   const pool             = group.amount && members.length ? `R ${(Number(group.amount) * members.length).toLocaleString()}` : "—";
 
+// rates
   const [rates, setRates] = useState(null); // initial value
   useEffect(() => {
     fetch(`${API}/api/rates`).then(res => res.json()).then(data => setRates(data));
   }, []);
+
+//savings growth
+  const [savingsGrowth, setSavingsGrowth] = useState(null);
+  useEffect(()=> {
+    const cycleMonths = parseInt(group.cycle);
+    //console.log('group.freq:', group.freq, 'group.cycle:', group.cycle, 'group.amount:', group.amount);
+    fetch(`${API}/api/savings?amount=${group.amount}&frequency=${group.freq}&cycle=${cycleMonths}`)
+    .then(res => res.json()).then(data => setSavingsGrowth(data));
+  }, []);
+
 
   return (
     <>
@@ -751,6 +762,24 @@ function MemberDashboard({ group, members, meetings, contributions, currentUserE
             ))}
           </dl>
         </article>
+
+        {savingsGrowth && (
+        <article className="card">
+          <header className="card-header"><h3>Savings Growth</h3></header>
+          <dl className="group-details">
+            {[
+              ["Total Contribution", `R${savingsGrowth.totalContribution}`],
+              ["Projected Total", `R${savingsGrowth.projectedTotal}`],
+              ["Interest Earned", `R${savingsGrowth.interestEarned}`],
+            ].map(([label, val])=>(
+              <div className="group-detail" key={label}>
+                <dt>{label}</dt>
+                <dd>{val}</dd>
+              </div>
+            ))}
+          </dl>
+        </article>
+        )}
       </div>
     </>
   );
