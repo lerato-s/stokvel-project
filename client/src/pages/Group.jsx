@@ -327,6 +327,12 @@ function TreasurerDashboard({ group, members, meetings, contributions, disbursem
   const totalCollected = paid.reduce((sum, c) => sum + c.amount, 0);
   const progress       = totalExpected ? Math.round((totalCollected / totalExpected) * 100) : 0;
 
+  const [rates, setRates] = useState(null); // initial value
+  useEffect(() => {
+    fetch(`${API}/api/rates`).then(res => res.json()).then(data => setRates(data));
+  }, []);
+
+
   const upcomingMeetings = meetings
     .filter((m) => m.status === "upcoming")
     .sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -360,6 +366,14 @@ function TreasurerDashboard({ group, members, meetings, contributions, disbursem
           <span className="stat-label">Next Meeting</span>
           <strong className="stat-value">{upcomingMeetings.length ? formatDate(upcomingMeetings[0].date) : "None"}</strong>
         </li>
+        <li className="stat-card">
+          <span className="stat-label">Repo Rate</span>
+          <strong className="stat-value">{rates ? `${rates.repoRate}%` : "—"}</strong>
+        </li>
+        <li className="stat-card">
+          <span className="stat-label">Prime Rate</span>
+          <strong className="stat-value">{rates ? `${rates.primeRate}%` : "—"}</strong>
+        </li> 
       </ul>
 
       <div className="dashboard-grid">
@@ -610,6 +624,11 @@ function MemberDashboard({ group, members, meetings, contributions, currentUserE
   const myPosition       = me ? members.findIndex((m) => m._id === me._id) + 1 : null;
   const pool             = group.amount && members.length ? `R ${(Number(group.amount) * members.length).toLocaleString()}` : "—";
 
+  const [rates, setRates] = useState(null); // initial value
+  useEffect(() => {
+    fetch(`${API}/api/rates`).then(res => res.json()).then(data => setRates(data));
+  }, []);
+
   return (
     <>
       <div className="section-header-bar">
@@ -636,6 +655,14 @@ function MemberDashboard({ group, members, meetings, contributions, currentUserE
         <li className="stat-card">
           <span className="stat-label">My Payout Position</span>
           <strong className="stat-value">{myPosition ? `#${myPosition} of ${members.length}` : "—"}</strong>
+        </li>
+        <li className="stat-card">
+          <span className="stat-label">Repo Rate</span>
+          <strong className="stat-value">{rates ? `${rates.repoRate}%` : "—"}</strong>
+        </li>
+        <li className="stat-card">
+          <span className="stat-label">Prime Rate</span>
+          <strong className="stat-value">{rates ? `${rates.primeRate}%` : "—"}</strong>
         </li>
       </ul>
 
