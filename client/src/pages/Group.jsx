@@ -1276,7 +1276,9 @@ export default function Group() {
   const [payLoading,     setPayLoading]     = useState(false);
   const [sidebarOpen,    setSidebarOpen]    = useState(false);
   const [membersLoading,   setMembersLoading]   = useState(false);
-
+  const [payoutLoading,     setPayoutLoading]     = useState(false);
+  const [disburseLoading,   setDisburseLoading]   = useState(false);
+  const [showProfile,     setShowProfile]      = useState(false);
   const navigate = useNavigate();
 
   const showToast = useCallback((msg) => {
@@ -1551,8 +1553,9 @@ export default function Group() {
           </nav>
 
           <footer className="sidebar-footer">
-            <div className="sidebar-user">
-              <div className="sidebar-user-avatar">{getInitials(currentUsername || currentUserEmail || "U")}</div>
+            <div className="sidebar-user"
+              onClick={() => setShowProfile(true)} style={{ cursor: "pointer" }} >
+              <div className="sidebar-user-avatar" style={{ transition: "0.2s", border: showProfile ? "2px solid #9b7fd4": "2px solid transparent" }}>{getInitials(currentUsername || currentUserEmail || "U")}</div>
               <div className="sidebar-user-info">
                 <span className="sidebar-user-name">{currentUsername || "User"}</span>
                 <span className="sidebar-user-email">{currentUserEmail}</span>
@@ -1688,6 +1691,83 @@ export default function Group() {
           <input id="meet-notes" type="text" value={meetNotes} onChange={(e) => setMeetNotes(e.target.value)} placeholder="e.g. Discuss payout schedule, review contributions..." />
         </Field>
       </Modal>
+
+      {/* Profile Modal */}
+      {showProfile && (
+        <div
+          className="modal-overlay open"
+          onClick={() => setShowProfile(false)}
+        >
+          <article className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 360 }}>
+            <header className="modal-header">
+              <h3>My Profile</h3>
+              <button className="modal-close" onClick={() => setShowProfile(false)}>✕</button>
+            </header>
+
+            <div className="modal-body">
+              {/* Avatar */}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "16px 0" }}>
+                <div style={{
+                  width: 72, height: 72, borderRadius: "50%",
+                  background: "rgba(155,127,212,0.2)",
+                  border: "2px solid #9b7fd4",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 700,
+                  color: "#c4a8f0"
+                }}>
+                  {getInitials(currentUsername || currentUserEmail || "U")}
+                </div>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text)" }}>
+                    {currentUsername || "User"}
+                  </div>
+                  <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>
+                    {currentUserEmail}
+                  </div>
+                  {myMemberRole && (
+                    <span className={`sidebar-role-badge ${myMemberRole.toLowerCase()}`} style={{ marginTop: 8, display: "inline-block" }}>
+                      {myMemberRole}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Info rows */}
+              <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                  <span style={{ color: "var(--text-muted)" }}>Email</span>
+                  <span style={{ color: "var(--text)" }}>{currentUserEmail}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                  <span style={{ color: "var(--text-muted)" }}>Username</span>
+                  <span style={{ color: "var(--text)" }}>{currentUsername || "—"}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                  <span style={{ color: "var(--text-muted)" }}>Groups</span>
+                  <span style={{ color: "var(--text)" }}>{groups.length}</span>
+                </div>
+              </div>
+            </div>
+
+            <footer className="modal-actions" style={{ flexDirection: "column", gap: 8 }}>
+              <button
+                className="btn-primary"
+                style={{ width: "100%", background: "#e05c5c", justifyContent: "center" }}
+                onClick={() => {
+                  localStorage.removeItem("user");
+                  window.location.href = "/login";
+                }}
+              >
+                <span className="material-icons" style={{ fontSize: 18 }}>logout</span> Logout
+                
+              </button>
+              <button className="btn-ghost" style={{ width: "100%" }} onClick={() => setShowProfile(false)}>
+                Cancel
+              </button>
+            </footer>
+          </article>
+        </div>
+      )}
 
       <Toast message={toast} />
     </div>

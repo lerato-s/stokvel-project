@@ -41,8 +41,8 @@ function Registration() {
       await updateProfile(result.user, { displayName: username });
       await handleBackendAuth(result.user);
     } catch (err) {
-      console.log("Full error:", err)        // ✅ add this
-      console.log("Error code:", err.code)   // ✅ add this
+      console.log("Full error:", err)        
+      console.log("Error code:", err.code)   
       console.log("Error message:", err.message)
       if (err.code === "auth/email-already-in-use") {
         setError("An account with this email already exists.");
