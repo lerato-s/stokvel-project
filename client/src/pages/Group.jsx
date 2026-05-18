@@ -930,4 +930,1012 @@ function Members({ members, onInvite, onRoleChange, currentUserEmail }) {
             <li key={m._id} className="member-card">
               <div className={`member-avatar ${m.status}`}>{m.initials}</div>
               <div className="member-info">
-                <strong>{m.
+                <strong>{m.name}</strong>
+                <span className="member-role">{m.role}</span>
+              </div>
+              <span className={`status-badge ${m.status}`}>{m.status}</span>
+              {isAdmin && m.contact !== currentUserEmail && (
+                <select className="role-select" value={m.role}
+                  onChange={(e) => onRoleChange(m._id, e.target.value)}
+                  aria-label={`Change role for ${m.name}`}
+                >
+                  <option value="Treasurer">Treasurer</option>
+                  <option value="Member">Member</option>
+                </select>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function Payouts({ members, group, onReorder }) {
+  const dragRef = useRef(null);
+  const isFIFO  = group?.payoutMethod === "Fixed Order (Roster)";
+  const pool    = group?.amount && members.length ? `R ${(Number(group.amount) * members.length).toLocaleString()}` : "—";
+
+  const handleDragStart = (i) => { dragRef.current = i; };
+  const handleDrop = (i) => {
+    if (isFIFO || dragRef.current === null || dragRef.current === i) return;
+    const reordered = [...members];
+    const [moved] = reordered.splice(dragRef.current, 1);
+    reordered.splice(i, 0, moved);
+    onReorder(reordered);
+    dragRef.current = null;
+  };
+
+  return (
+    <section aria-labelledby="payouts-heading">
+      <header className="section-header-bar">
+        <h2 id="payouts-heading">Payout Roster</h2>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span className="payout-method-badge">
+            {group?.payoutMethod === "Fixed Order (Roster)" && "📋 Fixed Roster"}
+            {group?.payoutMethod === "Lucky Draw"           && "🎲 Lucky Draw"}
+            {group?.payoutMethod === "Need-Based (Vote)"   && "🗳️ Need-Based"}
+            {!group?.payoutMethod                          && "—"}
+          </span>
+          {!isFIFO && <span className="hint">Drag to reorder</span>}
+        </div>
+      </header>
+      <div className="payout-method-info card" style={{ marginBottom: 20 }}>
+        {group?.payoutMethod === "Fixed Order (Roster)" && (
+          <p style={{ margin: 0, fontSize: 13, color: "var(--text-dim)" }}>
+            🔒 <strong>Fixed Roster (FIFO)</strong> — Members are paid in the order they joined.
+          </p>
+        )}
+        {group?.payoutMethod === "Lucky Draw" && (
+          <p style={{ margin: 0, fontSize: 13, color: "var(--text-dim)" }}>
+            🎲 <strong>Lucky Draw</strong> — Drag to set a preferred order, or draw randomly each cycle.
+          </p>
+        )}
+        {group?.payoutMethod === "Need-Based (Vote)" && (
+          <p style={{ margin: 0, fontSize: 13, color: "var(--text-dim)" }}>
+            🗳️ <strong>Need-Based (Vote)</strong> — Payout recipient decided by group vote each cycle.
+          </p>
+        )}
+        {!group?.payoutMethod && (
+          <p style={{ margin: 0, fontSize: 13, color: "var(--text-dim)" }}>
+            ⚠️ No payout method set. Please configure the group settings.
+          </p>
+        )}
+      </div>
+      {members.length === 0 ? (
+        <p className="empty-state">No members added yet.</p>
+      ) : (
+        <ol className="payout-list">
+          {members.map((m, i) => (
+            <li key={m._id} className={`payout-row${isFIFO ? " fifo-locked" : ""}`}
+              draggable={!isFIFO}
+              onDragStart={() => !isFIFO && handleDragStart(i)}
+              onDragOver={(e) => !isFIFO && e.preventDefault()}
+              onDrop={() => !isFIFO && handleDrop(i)}
+            >
+              <span className="payout-num">{String(i + 1).padStart(2, "0")}</span>
+              <div className="payout-avatar">{m.initials}</div>
+              <div className="payout-name">
+                <strong>{m.name}</strong>
+                <span>{m.role}</span>
+              </div>
+              <span className="payout-amount">{pool}</span>
+              <span className="payout-status">
+                {i === 0 ? <span className="status-badge active">Next Up</span> : <span className="status-badge pending">Pending</span>}
+              </span>
+              {!isFIFO && <span className="drag-handle" aria-hidden="true">⠿</span>}
+              {isFIFO  && <span className="fifo-lock-icon" aria-label="Locked — FIFO order">🔒</span>}
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
+function Meetings({ meetings, onAddMeeting, onCompleteMeeting }) {
+  return (
+    <section aria-labelledby="meetings-heading">
+      <header className="section-header-bar">
+        <h2 id="meetings-heading">Meeting Schedule</h2>
+        <button className="btn-invite" onClick={onAddMeeting}>+ Add Meeting</button>
+      </header>
+      <div className="meetings-table-wrap">
+        <table className="meetings-table">
+          <caption className="sr-only">Scheduled meetings</caption>
+          <thead>
+            <tr>{["#","Date","Time","Venue","Link","Status","Notes","Minutes"].map((h) => <th key={h} scope="col">{h}</th>)}</tr>
+          </thead>
+          <tbody>
+            {meetings.length === 0 ? (
+              <tr><td colSpan={8} className="empty-state">No meetings scheduled yet.</td></tr>
+            ) : (
+              meetings.map((m, i) => (
+                <tr key={m._id} className="meeting-row" onClick={() => onCompleteMeeting(m)} style={{ cursor: "pointer" }}>
+                  <td>{i + 1}</td>
+                  <td><time dateTime={m.date}>{formatDate(m.date)}</time></td>
+                  <td>{m.time || "—"}</td>
+                  <td>{m.venue || "—"}</td>
+                  <td>
+                    {m.link
+                      ? <a href={m.link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>{m.link}</a>
+                      : "—"}
+                  </td>
+                  <td><span className={`status-badge ${m.status}`}>{m.status}</span></td>
+                  <td>{m.notes || "—"}</td>
+                  <td style={{ textAlign: "center" }}>
+                    {m.minutes?.summary || m.minutes?.decisions?.length > 0
+                      ? <span title="Minutes recorded" style={{ fontSize: 16, cursor: "pointer" }}>📄</span>
+                      : <span style={{ color: "var(--text-dim)", fontSize: 12 }}>—</span>}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function Contributions({ contributions, members, group, onPay, loading, onFlagMissing , onConfirm, onFlagMissed, currentUserEmail }) {
+  const month = currentMonth();
+  const paidMemberIds = new Set(
+    contributions.filter((c) => c.month === month && c.status === "paid").map((c) => c.member?._id || c.member)
+  );
+  const totalExpected  = group.amount && members.length ? Number(group.amount) * members.length : 0;
+  const totalCollected = contributions
+    .filter((c) => c.month === month && c.status === "paid")
+    .reduce((sum, c) => sum + c.amount, 0);
+  const progress = totalExpected ? Math.round((totalCollected / totalExpected) * 100) : 0;
+
+  return (
+    <section aria-labelledby="contributions-heading">
+      <header className="section-header-bar">
+        <h2 id="contributions-heading">Contributions</h2>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <span className="month-label">{formatMonth(month)}</span>
+          <button className="btn-secondary" onClick={onFlagMissing}>Flag Unpaid</button>
+        </div>
+      </header>
+      <div className="contribution-summary card" style={{ marginBottom: 24 }}>
+        <div className="contrib-summary-row">
+          <div>
+            <div className="stat-label">Collected This Month</div>
+            <div className="stat-value" style={{ fontSize: 22 }}>
+              R {totalCollected.toLocaleString()}
+              <span style={{ fontSize: 13, color: "var(--text-muted)", fontWeight: 400 }}> / R {totalExpected.toLocaleString()}</span>
+            </div>
+          </div>
+          <div className="contrib-progress-wrap">
+            <div className="contrib-progress-bar">
+              <div className="contrib-progress-fill" style={{ width: `${progress}%` }}
+                role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} />
+            </div>
+            <span className="contrib-progress-label">{progress}% collected</span>
+          </div>
+        </div>
+      </div>
+      {members.length === 0 ? (
+        <p className="empty-state">No members yet.</p>
+      ) : (
+        <ul className="contributions-list">
+          {members.map((m) => {
+            const hasPaid = paidMemberIds.has(m._id);
+            const record  = contributions.find(
+              (c) => (c.member?._id || c.member) === m._id && c.month === month && c.status === "paid"
+            );
+            return (
+              <li key={m._id} className={`contribution-row${hasPaid ? " paid" : ""}`}>
+                <div className="payout-avatar">{m.initials}</div>
+                <div className="payout-name"><strong>{m.name}</strong><span>{m.role}</span></div>
+                {hasPaid ? (
+                  <div className="contrib-paid-info">
+                    <span className="status-badge active">✓ Paid</span>
+                    <span className="contrib-ref">{record?.reference}</span>
+                    <span className="contrib-date">{formatDateTime(record?.paidAt)}</span>
+                  </div>
+                ) : (
+                  <div className="contrib-actions">
+                    <span className="status-badge pending">Unpaid</span>
+                    {m.contact === currentUserEmail && (
+                    <button className="btn-pay" onClick={() => onPay(m)} disabled={loading}>Pay R{group.amount}</button>
+                    )}
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {contributions.length > 0 && (
+        <div style={{ marginTop: 32 }}>
+          <h3 className="card-title">Payment History</h3>
+          <div className="meetings-table-wrap">
+            <table className="meetings-table">
+              <caption className="sr-only">Contribution history</caption>
+              <thead><tr>{["Member","Month","Amount","Reference","Status","Date"].map((h) => <th key={h} scope="col">{h}</th>)}</tr></thead>
+              <tbody>
+                {contributions.map((c) => (
+                  <tr key={c._id}>
+                    <td>{c.member?.name || "—"}</td>
+                    <td>{formatMonth(c.month)}</td>
+                    <td style={{ color: "var(--green)", fontWeight: 600 }}>R{c.amount}</td>
+                    <td><code style={{ fontSize: 11, color: "var(--text-dim)" }}>{c.reference}</code></td>
+                    <td><span className={`status-badge ${c.status}`}>{c.status}</span></td>
+                    <td>{c.paidAt ? formatDateTime(c.paidAt) : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+function Disbursements({ disbursements, members, group, contributions, onDisburseNext, loading }) {
+  const month = currentMonth();
+  const totalCollected = contributions
+    .filter((c) => c.month === month && c.status === "paid")
+    .reduce((sum, c) => sum + c.amount, 0);
+
+  const paidMemberIds = new Set(
+    disbursements
+      .filter((d) => d.month === month && d.status === "paid")
+      .map((d) => d.member?._id || d.member)
+  );
+  const nextMember = members.find((m) => !paidMemberIds.has(m._id));
+
+  console.log("=== DISBURSEMENTS RENDERED ===");
+  console.log("nextMember:", nextMember);
+  console.log("totalCollected:", totalCollected);
+  console.log("loading:", loading);
+  console.log("button disabled:", loading || totalCollected === 0 || !nextMember);
+
+  return (
+    <section aria-labelledby="disbursements-heading">
+      <header className="section-header-bar">
+        <h2 id="disbursements-heading">Payout Disbursements</h2>
+        <span className="month-label">{formatMonth(month)}</span>
+      </header>
+
+      <div className="card contribution-summary" style={{ marginBottom: 24 }}>
+        <div className="contrib-summary-row">
+          <div>
+            <div className="stat-label">Available Pool</div>
+            <div className="stat-value" style={{ fontSize: 22 }}>R {totalCollected.toLocaleString()}</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
+              from {contributions.filter((c) => c.month === month && c.status === "paid").length} members
+            </div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div className="stat-label">Payout Method</div>
+            <div style={{ color: "var(--gold-light)", fontSize: 14, fontWeight: 600, marginTop: 4 }}>
+              {group.payoutMethod || "Not set"}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 24, padding: "20px 24px" }}>
+        <h3 style={{ margin: "0 0 8px", fontSize: 15 }}>Next in FIFO Queue</h3>
+        {nextMember ? (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+              <div className="payout-avatar">{nextMember.initials}</div>
+              <div>
+                <strong>{nextMember.name}</strong>
+                <span style={{ display: "block", fontSize: 12, color: "var(--text-dim)" }}>{nextMember.role}</span>
+              </div>
+            </div>
+            <button
+              className="btn-primary"
+              onClick={() => {
+                console.log("=== BUTTON CLICKED ===");
+                console.log("nextMember:", nextMember);
+                console.log("Calling onDisburseNext with:", nextMember.name);
+                onDisburseNext(nextMember);
+              }}
+              disabled={loading || totalCollected === 0 || !nextMember}
+              style={{ minWidth: 180 }}
+            >
+              {loading ? "Processing..." : `Disburse R${group.amount || "?"} to ${nextMember.name.split(" ")[0]}`}
+            </button>
+          </>
+        ) : (
+          <p style={{ color: "var(--green)" }}>✓ All members have been paid this month!</p>
+        )}
+      </div>
+
+      {disbursements.length > 0 && (
+        <div style={{ marginTop: 32 }}>
+          <h3 className="card-title">Disbursement History</h3>
+          <div className="meetings-table-wrap">
+            <table className="meetings-table">
+              <thead>
+                <tr>
+                  <th>Member</th><th>Month</th><th>Amount</th><th>Reference</th><th>Status</th><th>Note</th>
+                </tr>
+              </thead>
+              <tbody>
+                {disbursements.map((d) => (
+                  <tr key={d._id}>
+                    <td>{d.member?.name || "—"}</td>
+                    <td>{formatMonth(d.month)}</td>
+                    <td style={{ color: "var(--gold-light)", fontWeight: 600 }}>R{d.amount?.toLocaleString()}</td>
+                    <td><code style={{ fontSize: 11 }}>{d.reference || "—"}</code></td>
+                    <td><span className={`status-badge ${d.status === "paid" ? "active" : "pending"}`}>{d.status}</span></td>
+                    <td style={{ fontSize: 12 }}>{d.note || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function MemberPayouts({ groupId, currentUserEmail, members }) {
+  const [myPayouts, setMyPayouts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!groupId) return;
+    axios
+      .get(`${API}/api/payfast/disbursements/my?groupId=${groupId}`, { headers: authHeader() })
+      .then((res) => setMyPayouts(res.data))
+      .catch((err) => console.error("Failed to load payouts:", err))
+      .finally(() => setLoading(false));
+  }, [groupId]);
+
+  const totalReceived = myPayouts.reduce((sum, p) => sum + (p.amount || 0), 0);
+
+  if (loading) return <p className="empty-state">Loading payouts…</p>;
+
+  return (
+    <section aria-labelledby="m-payouts-heading">
+      <header className="section-header-bar">
+        <h2 id="m-payouts-heading">My Payouts</h2>
+        {totalReceived > 0 && (
+          <span className="badge active" style={{ background: "var(--green)" }}>
+            Total Received: R{totalReceived.toLocaleString()}
+          </span>
+        )}
+      </header>
+
+      {myPayouts.length === 0 ? (
+        <div className="card" style={{ padding: "40px 20px", textAlign: "center" }}>
+          <p style={{ fontSize: 32, margin: 0 }}>💰</p>
+          <p style={{ margin: "12px 0 0", color: "var(--text-dim)" }}>
+            You haven't received any payouts yet.
+          </p>
+          <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
+            Once the treasurer disburses funds to you, they will appear here.
+          </p>
+        </div>
+      ) : (
+        <div className="meetings-table-wrap">
+          <table className="meetings-table">
+            <thead>
+              <tr><th>Date</th><th>Amount</th><th>Reference</th><th>Status</th><th>Note</th></tr>
+            </thead>
+            <tbody>
+              {myPayouts.map((p) => (
+                <tr key={p._id}>
+                  <td>{p.paidAt ? formatDateTime(p.paidAt) : "—"}</td>
+                  <td style={{ color: "var(--gold-light)", fontWeight: 600 }}>R{p.amount?.toLocaleString()}</td>
+                  <td><code style={{ fontSize: 11 }}>{p.reference || "—"}</code></td>
+                  <td><span className={`status-badge ${p.status === "paid" ? "active" : "pending"}`}>{p.status}</span></td>
+                  <td style={{ fontSize: 12 }}>{p.note || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+// ── Root ──────────────────────────────────────────────────────────────────────
+export default function Group() {
+  const currentUser = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("user") || "{}");
+    } catch {
+      return {};
+    }
+  })();
+  const currentUserEmail =( currentUser.email || currentUser.user?.email || "").toLowerCase();
+  const currentUsername  = currentUser.username || currentUser.user?.username || "";
+
+  const [activeSection,  setActiveSection]  = useState("groups");
+  const [groups,         setGroups]         = useState([]);
+  const [selectedGroup,  setSelectedGroup]  = useState(null);
+  const [members,        setMembers]        = useState([]);
+  const [meetings,       setMeetings]       = useState([]);
+  const [loadingGroups,  setLoadingGroups]  = useState(true);
+  const [showGroupForm,  setShowGroupForm]  = useState(false);
+  const [toast,          setToast]          = useState("");
+  const [inviteModal,    setInviteModal]    = useState(false);
+  const [meetingModal,   setMeetingModal]   = useState(false);
+  const [inviteName,     setInviteName]     = useState("");
+  const [inviteContact,  setInviteContact]  = useState("");
+  const [meetDate,       setMeetDate]       = useState("");
+  const [meetTime,       setMeetTime]       = useState("");
+  const [meetVenue,      setMeetVenue]      = useState("");
+  const [meetLink,       setMeetLink]       = useState("");
+  const [meetNotes,      setMeetNotes]      = useState("");
+  const [contributions,  setContributions]  = useState([]);
+  const [disbursements,  setDisbursements]  = useState([]);
+  const [payLoading,     setPayLoading]     = useState(false);
+  const [sidebarOpen,    setSidebarOpen]    = useState(false);
+  const [membersLoading,   setMembersLoading]   = useState(false);
+  const [payoutLoading,     setPayoutLoading]     = useState(false);
+  const [disburseLoading,   setDisburseLoading]   = useState(false);
+  const [showProfile,     setShowProfile]      = useState(false);
+  const navigate = useNavigate();
+
+  const showToast = useCallback((msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(""), 3500);
+  }, []);
+
+  // Current user's role in the selected group
+  const myMemberRole = members.find((m) => m.contact === currentUserEmail)?.role || null;
+  const navItems     = getNavItems(selectedGroup ? myMemberRole : "Member");
+
+  useEffect(() => {
+    axios.get(`${API}/api/groups`, { headers: authHeader() })
+      .then((r) => setGroups(r.data))
+      .catch(() => showToast("Failed to load groups"))
+      .finally(() => setLoadingGroups(false));
+  }, []);
+
+  useEffect(() => {
+    if (!selectedGroup) return;
+    setMembersLoading(true);
+    const h = { headers: authHeader() };
+    Promise.all([
+      axios.get(`${API}/api/members?groupId=${selectedGroup._id}`, h),
+      axios.get(`${API}/api/meetings?groupId=${selectedGroup._id}`, h),
+      axios.get(`${API}/api/payfast/contributions?groupId=${selectedGroup._id}`, h),
+      axios.get(`${API}/api/payfast/disbursements?groupId=${selectedGroup._id}`, h),
+    ])
+      .then(([mRes, mtRes, cRes, dRes]) => {
+        setMembers(mRes.data);
+        setMeetings(mtRes.data);
+        setContributions(cRes.data);
+        setDisbursements(dRes.data);
+      })
+      .catch(() => showToast("Failed to load group data"))
+      .finally(() => setMembersLoading(false));
+  }, [selectedGroup]);
+
+  useEffect(() => {
+    const params  = new URLSearchParams(window.location.search);
+    const payment = params.get("payment");
+    const ref     = params.get("ref");
+    if (payment === "success") {
+      showToast(`✓ Payment successful! Ref: ${ref}`);
+      window.history.replaceState({}, "", window.location.pathname);
+      let attempts = 0;
+      const interval = setInterval(async () => {
+        attempts++;
+        try {
+          if (selectedGroup) {
+            const r = await axios.get(`${API}/api/payfast/contributions?groupId=${selectedGroup._id}`, { headers: authHeader() });
+            setContributions(r.data);
+            const paid = r.data.find((c) => c.reference === ref && c.status === "paid");
+            if (paid || attempts >= 5) clearInterval(interval);
+          }
+        } catch { clearInterval(interval); }
+      }, 3000);
+    } else if (payment === "cancelled") {
+      showToast("Payment was cancelled");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [selectedGroup]);
+
+  function handleSelectGroup(g) {
+    setSelectedGroup(g);
+    setActiveSection("dashboard");
+  }
+
+  function handleBack() {
+    setSelectedGroup(null);
+    setMembers([]);
+    setMeetings([]);
+    setContributions([]);
+    setDisbursements([]);
+    setActiveSection("groups");
+  }
+
+  async function handleRoleChange(memberId, newRole) {
+    try {
+      const { data } = await axios.patch(`${API}/api/members/${memberId}/role`, { role: newRole }, { headers: authHeader() });
+      setMembers((prev) => prev.map((m) => m._id === memberId ? { ...m, role: data.role } : m));
+      showToast(`✓ Role updated to ${newRole}`);
+    } catch (err) {
+      showToast("Failed to update role: " + (err.response?.data?.error || err.message));
+    }
+  }
+
+ async function handleFlagMissing() {
+    try {
+      const { data } = await axios.post(`${API}/api/flag-missing`, { groupId: selectedGroup._id, month: currentMonth() }, { headers: authHeader() });
+      showToast(`✓ ${data.message}`);
+    } catch (err) {
+      showToast("Failed: " + (err.response?.data?.error || err.message));
+    }
+  }
+
+  // Treasurer: confirm a manual/offline payment on behalf of a member
+  async function handleConfirmPayment(member) {
+    setPayLoading(true);
+    try {
+      const { data } = await axios.post(
+        `${API}/api/payfast/confirm`,
+        { groupId: selectedGroup._id, memberId: member._id, month: currentMonth() },
+        { headers: authHeader() }
+      );
+      setContributions((prev) => [data.contribution, ...prev]);
+      showToast(`✓ Payment confirmed for ${member.name}`);
+    } catch (err) {
+      showToast("Error: " + (err.response?.data?.error || err.message));
+    } finally { setPayLoading(false); }
+  }
+
+  //handleFlagMissed → individual action: marks a single member as missed (and moves them back in the FIFO queue if they are the current recipient
+  async function handleFlagMissed(member) {
+  if (!selectedGroup) return;
+  setPayLoading(true);
+  try {
+    await axios.post(
+      `${API}/api/groups/${selectedGroup._id}/flag-payment`,
+      { memberId: member._id, status: 'missed' },
+      { headers: authHeader() }
+    );
+    showToast(`✓ Payment flagged as missed for ${member.name}`);
+    const { data: newContributions } = await axios.get(
+      `${API}/api/payfast/contributions?groupId=${selectedGroup._id}`,
+      { headers: authHeader() }
+    );
+    setContributions(newContributions);
+  } catch (err) {
+    showToast(`❌ Failed: ${err.response?.data?.error || err.message}`);
+  } finally {
+    setPayLoading(false);
+  }
+}
+
+
+  async function saveGroup(form) {
+    try {
+      const { data } = await axios.post(`${API}/api/group`, form, { headers: authHeader() });
+      setGroups((prev) => [data, ...prev]);
+      setShowGroupForm(false);
+      showToast(`✓ "${data.name}" created`);
+    } catch (err) {
+      showToast("Failed to save: " + (err.response?.data?.error || err.message));
+    }
+  }
+
+  async function sendInvite() {
+    if (!inviteName.trim() || !inviteContact.trim()) { showToast("Please fill in all fields"); return; }
+    try {
+      const { data } = await axios.post(`${API}/api/members`, { name: inviteName, contact: inviteContact, groupId: selectedGroup._id }, { headers: authHeader() });
+      setMembers((prev) => [...prev, data]);
+      setInviteName(""); setInviteContact("");
+      setInviteModal(false);
+      showToast(`✓ Invite sent to ${inviteName.trim()}`);
+    } catch (err) {
+      showToast("Failed: " + (err.response?.data?.error || err.message));
+    }
+  }
+
+  async function addMeeting() {
+    if (!meetDate || !meetVenue.trim()) { showToast("Please add date and venue"); return; }
+    try {
+      const { data } = await axios.post(
+        `${API}/api/meetings`,
+        { date: meetDate, time: meetTime, venue: meetVenue, link: meetLink, notes: meetNotes, groupId: selectedGroup._id },
+        { headers: authHeader() }
+      );
+      setMeetings((prev) => [...prev, data].sort((a, b) => new Date(a.date) - new Date(b.date)));
+      setMeetDate(""); setMeetTime(""); setMeetVenue(""); setMeetNotes(""); setMeetLink("");
+      setMeetingModal(false);
+      showToast("✓ Meeting scheduled");
+    } catch (err) {
+      showToast("Failed: " + (err.response?.data?.error || err.message));
+    }
+  }
+
+  async function handleReorder(reordered) {
+    setMembers(reordered);
+    try {
+      await axios.put(`${API}/api/members/reorder`, { order: reordered.map((m, i) => ({ id: m._id, slot: i + 1 })) }, { headers: authHeader() });
+    } catch { showToast("Failed to save order"); }
+  }
+
+  async function handlePay(member) {
+    setPayLoading(true);
+    try {
+      const { data } = await axios.post(`${API}/api/payfast/contribute`, { groupId: selectedGroup._id, memberId: member._id }, { headers: authHeader() });
+      window.location.href = data.paymentUrl;
+    } catch (err) {
+      showToast("Payment error: " + (err.response?.data?.error || err.message));
+    } finally { setPayLoading(false); }
+  }
+
+  async function handleDisburse(member) {
+    setPayLoading(true);
+    try {
+      const { data } = await axios.post(`${API}/api/payfast/disburse`, { groupId: selectedGroup._id, memberId: member._id }, { headers: authHeader() });
+      setDisbursements((prev) => [data.disbursement, ...prev]);
+      showToast(data.message);
+    } catch (err) {
+      showToast("Error: " + (err.response?.data?.error || err.message));
+    } finally { setPayLoading(false); }
+  }
+
+
+ async function handleDisburseNext(member) {
+  console.log("=== DISBURSE BUTTON CLICKED ===");
+  console.log("Selected group:", selectedGroup?._id);
+  console.log("Member:", member?.name);
+  
+  if (!selectedGroup) {
+    showToast("No group selected");
+    return;
+  }
+  
+  setPayLoading(true);
+  
+  try {
+    const token = JSON.parse(localStorage.getItem("user") || "{}");
+    console.log("Token exists?", !!token.token);
+    
+    const response = await fetch(`${API}/api/payfast/disburse-next`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token.token || token.accessToken}`
+      },
+      body: JSON.stringify({ 
+        groupId: selectedGroup._id,
+        _t: Date.now()
+      })
+    });
+    
+    console.log("Response status:", response.status);
+    const data = await response.json();
+    console.log("Response data:", data);
+    
+    if (!response.ok) {
+      throw new Error(data.error || "Something went wrong");
+    }
+    
+    // Refresh all data
+    const groupsRes = await fetch(`${API}/api/groups`, {
+      headers: { 'Authorization': `Bearer ${token.token || token.accessToken}` }
+    });
+    const contributionsRes = await fetch(`${API}/api/payfast/contributions?groupId=${selectedGroup._id}`, {
+      headers: { 'Authorization': `Bearer ${token.token || token.accessToken}` }
+    });
+    const disbursementsRes = await fetch(`${API}/api/payfast/disbursements?groupId=${selectedGroup._id}`, {
+      headers: { 'Authorization': `Bearer ${token.token || token.accessToken}` }
+    });
+    
+    const groupsData = await groupsRes.json();
+    const contributionsData = await contributionsRes.json();
+    const disbursementsData = await disbursementsRes.json();
+    
+    // Find the updated group
+    const updatedGroup = groupsData.find(g => g._id === selectedGroup._id);
+    
+    setSelectedGroup(updatedGroup);
+    setContributions(contributionsData);
+    setDisbursements(disbursementsData);
+    showToast(data.message || "Payout recorded successfully!");
+    
+  } catch (err) {
+    console.error("Error:", err);
+    showToast(`❌ ${err.message}`);
+  } finally {
+    setPayLoading(false);
+  }
+}
+
+  async function handleMarkPaid(disbursementId) {
+    try {
+      const { data } = await axios.patch(`${API}/api/payfast/disburse/${disbursementId}`, {}, { headers: authHeader() });
+      setDisbursements((prev) => prev.map((d) => d._id === disbursementId ? data : d));
+      showToast("✓ Payout marked as paid");
+    } catch (err) {
+      showToast("Error: " + (err.response?.data?.error || err.message));
+    }
+  }
+
+  function handleCompleteMeeting(meeting) {
+    navigate(`/meetings/${meeting._id}/minutes`);
+  }
+
+  const topbarTitle = activeSection === "groups" ? "" : selectedGroup?.name || "";
+
+  if (showGroupForm) {
+    return (
+      <div style={{ minHeight: "100vh", color: "#f0eeff", display: "flex", flexDirection: "column", width: "100vw" }}>
+        <header style={{ display: "flex", alignItems: "center", gap: 16, padding: "0 40px", height: 64, background: "#131929", borderBottom: "1px solid #252d45", flexShrink: 0, width: "100%" }}>
+          <button onClick={() => setShowGroupForm(false)} style={{ color: "#9b7fd4", background: "none", border: "none", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", gap: 6 }}>
+            ‹ New Group
+          </button>
+        </header>
+        <main style={{ padding: "40px", overflowY: "auto", flex: 1, width: "100%", boxSizing: "border-box" }}>
+          <GroupForm onSave={saveGroup} onCancel={() => setShowGroupForm(false)} />
+        </main>
+      </div>
+    );
+  }
+
+  // Can current user schedule meetings? (Admin or Treasurer)
+  const canScheduleMeetings = myMemberRole === "Admin" || myMemberRole === "Treasurer";
+
+  return (
+    <div className="app-layout">
+      <header className="topbar">
+        <span className="logo-icon">◈</span>
+        <span className="logo-text">Stokvel</span>
+        {topbarTitle && <h1 className="topbar-title" style={{ marginLeft: 24 }}>{topbarTitle}</h1>}
+      </header>
+
+      <div className="app-body">
+        <aside className="sidebar" aria-label="Main navigation">
+          <nav aria-label="Sections">
+            <ul className="sidebar-nav">
+              {navItems
+                .filter((n) => n.id === "groups" || selectedGroup)
+                .map((item) => (
+                  <li key={item.id}>
+                    <a
+                      href={`#${item.id}`}
+                      className={`nav-item${activeSection === item.id || (item.id === "groups" && activeSection === "dashboard") ? " active" : ""}`}
+                      aria-current={activeSection === item.id ? "page" : undefined}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (item.id === "groups") handleBack();
+                        else setActiveSection(item.id);
+                      }}
+                    >
+                      <span className="nav-icon" aria-hidden="true">{item.icon}</span>
+                      {item.label}
+                    </a>
+                  </li>
+                ))}
+            </ul>
+          </nav>
+
+          <footer className="sidebar-footer">
+            <div className="sidebar-user"
+              onClick={() => setShowProfile(true)} style={{ cursor: "pointer" }} >
+              <div className="sidebar-user-avatar" style={{ transition: "0.2s", border: showProfile ? "2px solid #9b7fd4": "2px solid transparent" }}>{getInitials(currentUsername || currentUserEmail || "U")}</div>
+              <div className="sidebar-user-info">
+                <span className="sidebar-user-name">{currentUsername || "User"}</span>
+                <span className="sidebar-user-email">{currentUserEmail}</span>
+              </div>
+              <span className={`sidebar-role-badge ${(myMemberRole || "member").toLowerCase()} |`}>{myMemberRole  || ""}</span>
+            </div>
+          </footer>
+        </aside>
+
+        <div className="main">
+          <main id="main-content">
+
+            {/* Groups list — all roles */}
+            <div hidden={activeSection !== "groups"}>
+              <GroupsList groups={groups} loading={loadingGroups} onSelect={handleSelectGroup} onNew={() => setShowGroupForm(true)} username={currentUsername} />
+            </div>
+
+            {/* Overview — routed by role */}
+            
+            <div hidden={activeSection !== "dashboard"}>
+              {selectedGroup && membersLoading && (
+                <div style={{ 
+                  display: "flex", alignItems: "center", justifyContent: "center", 
+                  height: "60vh", flexDirection: "column", gap: 16 
+                }}>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: "50%",
+                    border: "3px solid rgba(155,127,212,0.2)",
+                    borderTop: "3px solid #9b7fd4",
+                    animation: "spin 1s linear infinite"
+                  }} />
+                  <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Loading...</p>
+                  <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                </div>
+              )}
+              {selectedGroup && !membersLoading && myMemberRole === "Admin" && (
+                <Dashboard group={selectedGroup} members={members} meetings={meetings} onBack={handleBack} />
+              )}
+              {selectedGroup && !membersLoading && myMemberRole === "Treasurer" && (
+                <TreasurerDashboard
+                  group={selectedGroup} members={members} meetings={meetings}
+                  contributions={contributions} disbursements={disbursements}
+                  onBack={handleBack} onNavigate={setActiveSection}
+                />
+              )}
+              {selectedGroup && !membersLoading && myMemberRole === "Member" && (
+                <MemberDashboard
+                  group={selectedGroup} members={members} meetings={meetings}
+                  contributions={contributions} currentUserEmail={currentUserEmail}
+                  onBack={handleBack} onNavigate={setActiveSection}
+                />
+              )}
+              {selectedGroup && !membersLoading && !myMemberRole && members.length > 0 && (
+                <p className="empty-state">Unable to determine your role in this group.</p>
+              )}
+            </div>
+
+            {/* Admin-only */}
+            <div hidden={activeSection !== "members"}>
+              <Members members={members} onInvite={() => setInviteModal(true)} onRoleChange={handleRoleChange} currentUserEmail={currentUserEmail} />
+            </div>
+            <div hidden={activeSection !== "payouts"}>
+              <Payouts members={members} group={selectedGroup} onReorder={handleReorder} />
+            </div>
+            <div hidden={activeSection !== "meetings"}>
+              <Meetings meetings={meetings} onAddMeeting={() => setMeetingModal(true)} onCompleteMeeting={handleCompleteMeeting} />
+            </div>
+            <div hidden={activeSection !== "contributions"}>
+              <Contributions contributions={contributions} members={members} group={selectedGroup || {}} onPay={handlePay} onFlagMissing={handleFlagMissing} loading={payLoading} currentUserEmail={currentUserEmail} />
+            </div>
+            <div hidden={activeSection !== "disbursements"}><Disbursements disbursements={disbursements} members={members} group={selectedGroup || {}}contributions={contributions} onDisburseNext={handleDisburseNext} loading={payLoading} />
+          </div>
+
+            {/* Treasurer-only */}
+            <div hidden={activeSection !== "t-members"}>
+              <TreasurerMembers members={members} contributions={contributions} />
+            </div>
+            <div hidden={activeSection !== "t-contributions"}>
+              <TreasurerContributions contributions={contributions} members={members} group={selectedGroup || {}} onConfirm={handleConfirmPayment} onFlagMissing={handleFlagMissing} onFlagMissed={handleFlagMissed} loading={payLoading} />
+            </div>
+            <div hidden={activeSection !== "t-meetings"}>
+              <Meetings meetings={meetings} onAddMeeting={() => setMeetingModal(true)} onCompleteMeeting={handleCompleteMeeting} />
+            </div>
+
+            {/* Member-only */}
+            <div hidden={activeSection !== "m-contributions"}>
+              <MemberContributions contributions={contributions} members={members} group={selectedGroup || {}} onPay={handlePay} loading={payLoading} currentUserEmail={currentUserEmail} />
+            </div>
+            <div hidden={activeSection !== "m-meetings"}>
+              <MemberMeetings meetings={meetings} />
+            </div>
+            <div hidden={activeSection !== "m-payouts"}><MemberPayouts groupId={selectedGroup?._id} currentUserEmail={currentUserEmail} members={members}/>
+            </div>
+            <div hidden={activeSection !== "compliance"}><ComplianceReport groupId={selectedGroup?._id} /> </div>
+          </main>
+        </div>
+      </div>
+
+      {/* Invite modal — admin only */}
+      <Modal open={inviteModal} onClose={() => setInviteModal(false)} title="Invite a Member"
+        actions={[
+          <button key="send" className="btn-primary" onClick={sendInvite}>Send Invite</button>,
+          <button key="cancel" className="btn-ghost" onClick={() => setInviteModal(false)}>Cancel</button>,
+        ]}
+      >
+        <Field label="Full Name" htmlFor="invite-name">
+          <input id="invite-name" type="text" value={inviteName} onChange={(e) => setInviteName(e.target.value)} placeholder="e.g. Zanele Dlamini" />
+        </Field>
+        <Field label="Email Address" htmlFor="invite-contact">
+          <input id="invite-contact" type="email" value={inviteContact} onChange={(e) => setInviteContact(e.target.value)} placeholder="e.g. zanele@email.com" />
+        </Field>
+      </Modal>
+
+      {/* Meeting modal — admin & treasurer */}
+      <Modal open={meetingModal} onClose={() => setMeetingModal(false)} title="Schedule Meeting"
+        actions={[
+          <button key="add" className="btn-primary" onClick={addMeeting}>Schedule</button>,
+          <button key="cancel" className="btn-ghost" onClick={() => setMeetingModal(false)}>Cancel</button>,
+        ]}
+      >
+        <Field label="Date" htmlFor="meet-date">
+          <input id="meet-date" type="date" value={meetDate} onChange={(e) => setMeetDate(e.target.value)} />
+        </Field>
+        <Field label="Time" htmlFor="meet-time">
+          <input id="meet-time" type="time" value={meetTime} onChange={(e) => setMeetTime(e.target.value)} />
+        </Field>
+        <Field label="Venue" htmlFor="meet-venue">
+          <input id="meet-venue" type="text" value={meetVenue} onChange={(e) => setMeetVenue(e.target.value)} placeholder="e.g. Community Hall / Zoom" />
+        </Field>
+        <Field label="Meeting Link (optional)" htmlFor="meet-link">
+          <input id="meet-link" type="url" value={meetLink} onChange={(e) => setMeetLink(e.target.value)} placeholder="e.g. https://zoom.us/j/123456789" />
+        </Field>
+        <Field label="Agenda / Notes (optional)" htmlFor="meet-notes">
+          <input id="meet-notes" type="text" value={meetNotes} onChange={(e) => setMeetNotes(e.target.value)} placeholder="e.g. Discuss payout schedule, review contributions..." />
+        </Field>
+      </Modal>
+
+      {/* Profile Modal */}
+      {showProfile && (
+        <div
+          className="modal-overlay open"
+          onClick={() => setShowProfile(false)}
+        >
+          <article className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 360 }}>
+            <header className="modal-header">
+              <h3>My Profile</h3>
+              <button className="modal-close" onClick={() => setShowProfile(false)}>✕</button>
+            </header>
+
+            <div className="modal-body">
+              {/* Avatar */}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "16px 0" }}>
+                <div style={{
+                  width: 72, height: 72, borderRadius: "50%",
+                  background: "rgba(155,127,212,0.2)",
+                  border: "2px solid #9b7fd4",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 700,
+                  color: "#c4a8f0"
+                }}>
+                  {getInitials(currentUsername || currentUserEmail || "U")}
+                </div>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text)" }}>
+                    {currentUsername || "User"}
+                  </div>
+                  <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>
+                    {currentUserEmail}
+                  </div>
+                  {myMemberRole && (
+                    <span className={`sidebar-role-badge ${myMemberRole.toLowerCase()}`} style={{ marginTop: 8, display: "inline-block" }}>
+                      {myMemberRole}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Info rows */}
+              <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                  <span style={{ color: "var(--text-muted)" }}>Email</span>
+                  <span style={{ color: "var(--text)" }}>{currentUserEmail}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                  <span style={{ color: "var(--text-muted)" }}>Username</span>
+                  <span style={{ color: "var(--text)" }}>{currentUsername || "—"}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                  <span style={{ color: "var(--text-muted)" }}>Groups</span>
+                  <span style={{ color: "var(--text)" }}>{groups.length}</span>
+                </div>
+              </div>
+            </div>
+
+            <footer className="modal-actions" style={{ flexDirection: "column", gap: 8 }}>
+              <button
+                className="btn-primary"
+                style={{ width: "100%", background: "#e05c5c", justifyContent: "center" }}
+                onClick={() => {
+                  localStorage.removeItem("user");
+                  window.location.href = "/login";
+                }}
+              >
+                <span className="material-icons" style={{ fontSize: 18 }}>logout</span> Logout
+                
+              </button>
+              <button className="btn-ghost" style={{ width: "100%" }} onClick={() => setShowProfile(false)}>
+                Cancel
+              </button>
+            </footer>
+          </article>
+        </div>
+      )}
+
+      <Toast message={toast} />
+    </div>
+  );
+}
