@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import '../pages/ResetPassword.css';
+import './ResetPassword.css';
 import ResetPasswordForm from '../components/ResetPasswordForm';
 
 function ResetPassword() {

@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import "../pages/Registration.css";
+import "../styles/Registration.css";
 import { FaEyeSlash, FaEye } from "react-icons/fa";
 
 function RegistrationForm({
