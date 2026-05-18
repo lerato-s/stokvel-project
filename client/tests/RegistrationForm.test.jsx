@@ -53,6 +53,6 @@ describe("RegistrationForm - Simple Tests", () => {
     );
     const registerButton = document.querySelector('button[type="submit"]');
     expect(registerButton).toBeInTheDocument();
-    expect(registerButton.textContent).toMatch(/register/i);
+    expect(registerButton.textContent).toMatch(/create account/i);
   });
 });

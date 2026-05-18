@@ -1,8 +1,12 @@
 // tests/GroupForm.test.jsx
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup} from "@testing-library/react";
+import { afterEach } from "vitest";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import '@testing-library/jest-dom/vitest';
 import GroupForm from "../src/components/GroupForm";
+
+
+afterEach(cleanup);
 
 // Clear everything before each test
 beforeEach(() => {
@@ -64,6 +68,13 @@ describe("GroupForm", () => {
     
     fireEvent.change(screen.getByLabelText(/group rules/i), { 
       target: { value: "No late payments" } 
+    });
+
+    fireEvent.change(screen.getByLabelText(/meeting day/i), {
+      target: { value: "Monday" }
+    });
+    fireEvent.change(screen.getByLabelText(/group rules/i), {
+      target: { value: "No late payments" }
     });
     
     const saveButton = screen.getByRole('button', { name: /save configuration/i });
