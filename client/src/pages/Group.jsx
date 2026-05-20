@@ -11,10 +11,8 @@ const API = import.meta.env.VITE_API_URL;
 function authHeader() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const token = user.token || user.accessToken || user.user?.token;
-  if (token) return { Authorization: `Bearer ${token}` };
-  return {};
+  return { Authorization: `Bearer ${token}` };
 }
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatDate(d) {
   if (!d) return "—";
@@ -58,7 +56,7 @@ const TREASURER_NAV = [
   { id: "t-contributions", icon: "₴", label: "Contributions" },
   { id: "t-meetings",      icon: "◷", label: "Meetings" },
   { id: "disbursements",   icon: "◈", label: "Disbursements" },
-  //{ id: "compliance",      icon: "", label: "Compliance" },   // ✅ add this
+  //{ id: "compliance",      icon: "", label: "Compliance" },   
 ];
 
 const MEMBER_NAV = [
@@ -66,6 +64,7 @@ const MEMBER_NAV = [
   { id: "dashboard",       icon: "◎", label: "Overview" },
   { id: "m-contributions", icon: "₴", label: "My Contributions" },
   { id: "m-meetings",      icon: "◷", label: "Meetings" },
+  { id: "m-payouts",       icon: "◈", label: "My Payouts" },
 ];
 
 function getNavItems(role) {
@@ -1139,8 +1138,10 @@ function Contributions({ contributions, members, group, onPay, loading, onFlagMi
                 ) : (
                   <div className="contrib-actions">
                     <span className="status-badge pending">Unpaid</span>
-                    {m.contact === currentUserEmail && (
-                    <button className="btn-pay" onClick={() => onPay(m)} disabled={loading}>Pay R{group.amount}</button>
+                    {m.contact.toLowerCase() === currentUserEmail.toLowerCase() && (
+                      <button className="btn-pay" onClick={() => onPay(m)} disabled={loading}>
+                        Pay R{group.amount}
+                      </button>
                     )}
                   </div>
                 )}
@@ -1175,13 +1176,18 @@ function Contributions({ contributions, members, group, onPay, loading, onFlagMi
     </section>
   );
 }
-
-function Disbursements({ disbursements, members, group, contributions, onDisburse, onMarkPaid, loading }) {
+function Disbursements({ disbursements, members, group, contributions, onDisburseNext, loading }) {
   const month = currentMonth();
   const totalCollected = contributions
     .filter((c) => c.month === month && c.status === "paid")
     .reduce((sum, c) => sum + c.amount, 0);
-  const disbursedMemberIds = new Set(disbursements.map((d) => d.member?._id || d.member));
+
+  const paidMemberIds = new Set(
+    disbursements
+      .filter((d) => d.month === month && d.status === "paid")
+      .map((d) => d.member?._id || d.member)
+  );
+  const nextMember = members.find((m) => !paidMemberIds.has(m._id));
 
   return (
     <section aria-labelledby="disbursements-heading">
@@ -1189,13 +1195,14 @@ function Disbursements({ disbursements, members, group, contributions, onDisburs
         <h2 id="disbursements-heading">Payout Disbursements</h2>
         <span className="month-label">{formatMonth(month)}</span>
       </header>
+
       <div className="card contribution-summary" style={{ marginBottom: 24 }}>
         <div className="contrib-summary-row">
           <div>
             <div className="stat-label">Available Pool</div>
             <div className="stat-value" style={{ fontSize: 22 }}>R {totalCollected.toLocaleString()}</div>
             <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
-              from {contributions.filter((c) => c.month === month && c.status === "paid").length} members this month
+              from {contributions.filter((c) => c.month === month && c.status === "paid").length} members
             </div>
           </div>
           <div style={{ textAlign: "right" }}>
@@ -1206,57 +1213,52 @@ function Disbursements({ disbursements, members, group, contributions, onDisburs
           </div>
         </div>
       </div>
-      {members.length === 0 ? (
-        <p className="empty-state">No members yet.</p>
-      ) : (
-        <ul className="contributions-list" aria-label="Disbursement roster">
-          {members.map((m, i) => {
-            const disbursed = disbursedMemberIds.has(m._id);
-            const record    = disbursements.find((d) => (d.member?._id || d.member) === m._id);
-            return (
-              <li key={m._id} className={`contribution-row${disbursed ? " paid" : ""}`}>
-                <span className="payout-num">{String(i + 1).padStart(2, "0")}</span>
-                <div className="payout-avatar">{m.initials}</div>
-                <div className="payout-name"><strong>{m.name}</strong><span>{m.role}</span></div>
-                {disbursed ? (
-                  <div className="contrib-paid-info">
-                    <span className={`status-badge ${record.status}`}>{record.status}</span>
-                    <span className="contrib-ref">R{record.amount?.toLocaleString()}</span>
-                    {record.status === "pending" && (
-                      <button className="btn-secondary" style={{ fontSize: 12, padding: "5px 12px" }}
-                        onClick={() => onMarkPaid(record._id)} disabled={loading}>
-                        Mark Paid
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="contrib-actions">
-                    <span className="status-badge pending">No Payout</span>
-                    <button className="btn-pay" onClick={() => onDisburse(m)} disabled={loading || totalCollected === 0}>
-                      Initiate Payout
-                    </button>
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+
+      <div className="card" style={{ marginBottom: 24, padding: "20px 24px" }}>
+        <h3 style={{ margin: "0 0 8px", fontSize: 15 }}>Next in FIFO Queue</h3>
+        {nextMember ? (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+              <div className="payout-avatar">{nextMember.initials}</div>
+              <div>
+                <strong>{nextMember.name}</strong>
+                <span style={{ display: "block", fontSize: 12, color: "var(--text-dim)" }}>{nextMember.role}</span>
+              </div>
+            </div>
+            <button
+              className="btn-primary"
+              onClick={() => {
+                onDisburseNext(nextMember);
+              }}
+              disabled={loading || totalCollected === 0 || !nextMember}
+              style={{ minWidth: 180 }}
+            >
+              {loading ? "Processing..." : `Disburse R${group.amount || "?"} to ${nextMember.name.split(" ")[0]}`}
+            </button>
+          </>
+        ) : (
+          <p style={{ color: "var(--green)" }}>✓ All members have been paid this month!</p>
+        )}
+      </div>
+
       {disbursements.length > 0 && (
         <div style={{ marginTop: 32 }}>
           <h3 className="card-title">Disbursement History</h3>
           <div className="meetings-table-wrap">
             <table className="meetings-table">
-              <caption className="sr-only">Disbursement history</caption>
-              <thead><tr>{["Member","Month","Amount","Reference","Status","Note"].map((h) => <th key={h} scope="col">{h}</th>)}</tr></thead>
+              <thead>
+                <tr>
+                  <th>Member</th><th>Month</th><th>Amount</th><th>Reference</th><th>Status</th><th>Note</th>
+                </tr>
+              </thead>
               <tbody>
                 {disbursements.map((d) => (
                   <tr key={d._id}>
                     <td>{d.member?.name || "—"}</td>
                     <td>{formatMonth(d.month)}</td>
                     <td style={{ color: "var(--gold-light)", fontWeight: 600 }}>R{d.amount?.toLocaleString()}</td>
-                    <td><code style={{ fontSize: 11, color: "var(--text-dim)" }}>{d.reference}</code></td>
-                    <td><span className={`status-badge ${d.status}`}>{d.status}</span></td>
+                    <td><code style={{ fontSize: 11 }}>{d.reference || "—"}</code></td>
+                    <td><span className={`status-badge ${d.status === "paid" ? "active" : "pending"}`}>{d.status}</span></td>
                     <td style={{ fontSize: 12 }}>{d.note || "—"}</td>
                   </tr>
                 ))}
@@ -1269,6 +1271,67 @@ function Disbursements({ disbursements, members, group, contributions, onDisburs
   );
 }
 
+function MemberPayouts({ groupId, currentUserEmail, members }) {
+  const [myPayouts, setMyPayouts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!groupId) return;
+    axios
+      .get(`${API}/api/payfast/disbursements/my?groupId=${groupId}`, { headers: authHeader() })
+      .then((res) => setMyPayouts(res.data))
+      .catch((err) => console.error("Failed to load payouts:", err))
+      .finally(() => setLoading(false));
+  }, [groupId]);
+
+  const totalReceived = myPayouts.reduce((sum, p) => sum + (p.amount || 0), 0);
+
+  if (loading) return <p className="empty-state">Loading payouts…</p>;
+
+  return (
+    <section aria-labelledby="m-payouts-heading">
+      <header className="section-header-bar">
+        <h2 id="m-payouts-heading">My Payouts</h2>
+        {totalReceived > 0 && (
+          <span className="badge active" style={{ background: "var(--green)" }}>
+            Total Received: R{totalReceived.toLocaleString()}
+          </span>
+        )}
+      </header>
+
+      {myPayouts.length === 0 ? (
+        <div className="card" style={{ padding: "40px 20px", textAlign: "center" }}>
+          <p style={{ fontSize: 32, margin: 0 }}>💰</p>
+          <p style={{ margin: "12px 0 0", color: "var(--text-dim)" }}>
+            You haven't received any payouts yet.
+          </p>
+          <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
+            Once the treasurer disburses funds to you, they will appear here.
+          </p>
+        </div>
+      ) : (
+        <div className="meetings-table-wrap">
+          <table className="meetings-table">
+            <thead>
+              <tr><th>Date</th><th>Amount</th><th>Reference</th><th>Status</th><th>Note</th></tr>
+            </thead>
+            <tbody>
+              {myPayouts.map((p) => (
+                <tr key={p._id}>
+                  <td>{p.paidAt ? formatDateTime(p.paidAt) : "—"}</td>
+                  <td style={{ color: "var(--gold-light)", fontWeight: 600 }}>R{p.amount?.toLocaleString()}</td>
+                  <td><code style={{ fontSize: 11 }}>{p.reference || "—"}</code></td>
+                  <td><span className={`status-badge ${p.status === "paid" ? "active" : "pending"}`}>{p.status}</span></td>
+                  <td style={{ fontSize: 12 }}>{p.note || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
 // ── Root ──────────────────────────────────────────────────────────────────────
 export default function Group() {
   const currentUser = (() => {
@@ -1393,7 +1456,7 @@ export default function Group() {
     }
   }
 
-  async function handleFlagMissing() {
+ async function handleFlagMissing() {
     try {
       const { data } = await axios.post(`${API}/api/flag-missing`, { groupId: selectedGroup._id, month: currentMonth() }, { headers: authHeader() });
       showToast(`✓ ${data.message}`);
@@ -1435,7 +1498,7 @@ export default function Group() {
     );
     setContributions(newContributions);
   } catch (err) {
-    showToast(`❌ Failed: ${err.response?.data?.error || err.message}`);
+    showToast(` Failed: ${err.response?.data?.error || err.message}`);
   } finally {
     setPayLoading(false);
   }
@@ -1510,6 +1573,74 @@ export default function Group() {
       showToast("Error: " + (err.response?.data?.error || err.message));
     } finally { setPayLoading(false); }
   }
+
+
+ async function handleDisburseNext(member) {
+  console.log("=== DISBURSE BUTTON CLICKED ===");
+  console.log("Selected group:", selectedGroup?._id);
+  console.log("Member:", member?.name);
+  
+  if (!selectedGroup) {
+    showToast("No group selected");
+    return;
+  }
+  
+  setPayLoading(true);
+  
+  try {
+    const token = JSON.parse(localStorage.getItem("user") || "{}");
+    console.log("Token exists?", !!token.token);
+    
+    const response = await fetch(`${API}/api/payfast/disburse-next`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token.token || token.accessToken}`
+      },
+      body: JSON.stringify({ 
+        groupId: selectedGroup._id,
+        _t: Date.now()
+      })
+    });
+    
+    console.log("Response status:", response.status);
+    const data = await response.json();
+    console.log("Response data:", data);
+    
+    if (!response.ok) {
+      throw new Error(data.error || "Something went wrong");
+    }
+    
+    // Refresh all data
+    const groupsRes = await fetch(`${API}/api/groups`, {
+      headers: { 'Authorization': `Bearer ${token.token || token.accessToken}` }
+    });
+    const contributionsRes = await fetch(`${API}/api/payfast/contributions?groupId=${selectedGroup._id}`, {
+      headers: { 'Authorization': `Bearer ${token.token || token.accessToken}` }
+    });
+    const disbursementsRes = await fetch(`${API}/api/payfast/disbursements?groupId=${selectedGroup._id}`, {
+      headers: { 'Authorization': `Bearer ${token.token || token.accessToken}` }
+    });
+    
+    const groupsData = await groupsRes.json();
+    const contributionsData = await contributionsRes.json();
+    const disbursementsData = await disbursementsRes.json();
+    
+    // Find the updated group
+    const updatedGroup = groupsData.find(g => g._id === selectedGroup._id);
+    
+    setSelectedGroup(updatedGroup);
+    setContributions(contributionsData);
+    setDisbursements(disbursementsData);
+    showToast(data.message || "Payout recorded successfully!");
+    
+  } catch (err) {
+    console.error("Error:", err);
+    showToast(`❌ ${err.message}`);
+  } finally {
+    setPayLoading(false);
+  }
+}
 
   async function handleMarkPaid(disbursementId) {
     try {
@@ -1653,9 +1784,8 @@ export default function Group() {
             <div hidden={activeSection !== "contributions"}>
               <Contributions contributions={contributions} members={members} group={selectedGroup || {}} onPay={handlePay} onFlagMissing={handleFlagMissing} loading={payLoading} currentUserEmail={currentUserEmail} />
             </div>
-            <div hidden={activeSection !== "disbursements"}>
-              <Disbursements disbursements={disbursements} members={members} group={selectedGroup || {}} contributions={contributions} onDisburse={handleDisburse} onMarkPaid={handleMarkPaid} loading={payLoading} />
-            </div>
+            <div hidden={activeSection !== "disbursements"}><Disbursements disbursements={disbursements} members={members} group={selectedGroup || {}}contributions={contributions} onDisburseNext={handleDisburseNext} loading={payLoading} />
+          </div>
 
             {/* Treasurer-only */}
             <div hidden={activeSection !== "t-members"}>
@@ -1674,6 +1804,8 @@ export default function Group() {
             </div>
             <div hidden={activeSection !== "m-meetings"}>
               <MemberMeetings meetings={meetings} />
+            </div>
+            <div hidden={activeSection !== "m-payouts"}><MemberPayouts groupId={selectedGroup?._id} currentUserEmail={currentUserEmail} members={members}/>
             </div>
             <div hidden={activeSection !== "compliance"}><ComplianceReport groupId={selectedGroup?._id} /> </div>
           </main>

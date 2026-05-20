@@ -181,6 +181,48 @@ async function sendContributionReceiptEmail({ toEmail, toName, groupName, amount
   })
 }
 
+
+async function sendPayoutInitiatedEmail({ toEmail, toName, amount, groupName, reference }) {
+  await transporter.sendMail({
+    from: `"${groupName} Stokvel" <${process.env.EMAIL_FROM}>`,
+    to: toEmail,
+    subject: `Payout Initiated – ${groupName}`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; padding: 32px; background: #f9f9f9; border-radius: 12px;">
+        <h2 style="color: #9b7fd4;">Payout Initiated</h2>
+        <p>Hi ${toName},</p>
+        <p>The treasurer has initiated a payout of <strong>R${amount}</strong> for you from <strong>${groupName}</strong>.</p>
+        <p>Reference: ${reference}</p>
+        <p>The treasurer will now send the money via bank transfer or cash. Once received, your payout status will be updated to "Paid".</p>
+        <p style="color: #999; font-size: 13px;">If you have any questions, contact your group treasurer.</p>
+      </div>
+    `,
+  });
+}
+
+// ── Send payout notification (member receives money) 
+async function sendPayoutNotificationEmail({ toEmail, toName, amount, groupName, transactionId, date }) {
+  await transporter.sendMail({
+    from:    `"${groupName} Stokvel" <${process.env.EMAIL_FROM}>`,
+    to:      toEmail,
+    subject: `💰 You received a payout from ${groupName}`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; padding: 32px; background: #f9f9f9; border-radius: 12px;">
+        <h2 style="color: #3dba8c;">Payout Received ✓</h2>
+        <p>Hi <strong>${toName}</strong>,</p>
+        <p>You have received a payout of <strong>R${amount}</strong> from your stokvel group <strong>${groupName}</strong>.</p>
+        <div style="background: white; border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin: 16px 0;">
+          <p style="margin: 4px 0;"><strong>Amount:</strong> R${amount}</p>
+          <p style="margin: 4px 0;"><strong>Date:</strong> ${date.toLocaleDateString()}</p>
+          <p style="margin: 4px 0;"><strong>Transaction ID:</strong> ${transactionId}</p>
+        </div>
+        <p>Log in to your stokvel dashboard to view your full payout history.</p>
+        <p style="color: #999; font-size: 13px;">This is an automated message – please do not reply.</p>
+      </div>
+    `,
+  });
+}
+
 module.exports = {
   sendInviteEmail,
   sendMeetingNotification,
@@ -188,4 +230,6 @@ module.exports = {
   sendMeetingMinutes,
   sendRoleAssignedEmail,
   sendContributionReceiptEmail,
+  sendPayoutInitiatedEmail,
+  sendPayoutNotificationEmail, 
 }

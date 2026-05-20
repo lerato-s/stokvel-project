@@ -12,6 +12,7 @@ Thumbs.db
 
 # Coverage reports
 coverage/
+test-coverage/
 
 # Logs
 npm-debug.log*

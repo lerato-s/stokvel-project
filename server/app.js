@@ -14,6 +14,7 @@ const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const groupRoutes = require("./routes/groupRoutes");
 const payfastRoutes = require("./routes/payfastRoutes");
+const memberRoutes  = require("./routes/memberRoutes");
 //const notificationRoutes = require('./routes/notificationRoutes');
 
 
@@ -56,6 +57,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api", groupRoutes);
 app.use("/api/payfast", payfastRoutes);
+app.use("/api/members", memberRoutes);
 //app.use('/api', notificationRoutes);
 
 

@@ -382,6 +382,146 @@ router.get("/contributions", protect, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Treasurer manually confirms an offline payment
+router.post("/confirm", protect, async (req, res) => {
+  try {
+    const { groupId, memberId, month } = req.body;
+    if (!groupId || !memberId) {
+      return res.status(400).json({ error: "groupId and memberId required" });
+    }
+
+    const Group = getGroup();
+    const Member = getMember();
+
+    const group = await Group.findById(groupId);
+    if (!group) return res.status(404).json({ error: "Group not found" });
+
+    // Allow owner or treasurer
+    const isOwner = group.owner.toString() === req.userId;
+    let isTreasurer = false;
+    if (!isOwner) {
+      const currentUser = await User.findById(req.userId).select("email");
+      const treasurerMember = await Member.findOne({
+        group: groupId,
+        role: "Treasurer",
+        status: "active",
+        $or: [
+          { userId: req.userId },
+          { contact: currentUser?.email?.toLowerCase() }
+        ]
+      });
+      isTreasurer = !!treasurerMember;
+    }
+    if (!isOwner && !isTreasurer) {
+      return res.status(403).json({ error: "Only owner or treasurer can confirm payments" });
+    }
+
+    const member = await Member.findOne({ _id: memberId, group: groupId });
+    if (!member) return res.status(404).json({ error: "Member not found" });
+
+    const contributionMonth = month || currentMonth();
+
+    // Check if already paid
+    const existing = await Contribution.findOne({
+      group: groupId,
+      member: memberId,
+      month: contributionMonth,
+      status: "paid",
+    });
+    if (existing) {
+      return res.status(409).json({ error: `${member.name} already paid for ${contributionMonth}` });
+    }
+
+    const reference = `MANUAL-${groupId.toString().slice(-4).toUpperCase()}-${memberId.toString().slice(-4).toUpperCase()}-${Date.now()}`;
+
+    const contribution = await Contribution.create({
+      group: groupId,
+      member: memberId,
+      amount: group.amount,
+      month: contributionMonth,
+      status: "paid",
+      reference,
+      paidAt: new Date(),
+    });
+
+    await contribution.populate("member", "name initials");
+
+    res.status(201).json({ contribution });
+  } catch (err) {
+    console.error("Confirm payment error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Flag a member's payment as missed
+router.post("/:groupId/flag-payment", protect, async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const { memberId, status } = req.body;
+
+    if (!memberId) return res.status(400).json({ error: "memberId required" });
+
+    const Group = mongoose.models.Group;
+    const Member = mongoose.models.Member;
+
+    const group = await Group.findById(groupId);
+    if (!group) return res.status(404).json({ error: "Group not found" });
+
+    // Allow owner or treasurer
+    const isOwner = group.owner.toString() === req.userId;
+    let isTreasurer = false;
+    if (!isOwner) {
+      const currentUser = await User.findById(req.userId).select("email");
+      const treasurerMember = await Member.findOne({
+        group: groupId,
+        role: "Treasurer",
+        status: "active",
+        $or: [
+          { userId: req.userId },
+          { contact: currentUser?.email?.toLowerCase() }
+        ]
+      });
+      isTreasurer = !!treasurerMember;
+    }
+    if (!isOwner && !isTreasurer) {
+      return res.status(403).json({ error: "Only owner or treasurer can flag payments" });
+    }
+
+    const member = await Member.findOne({ _id: memberId, group: groupId });
+    if (!member) return res.status(404).json({ error: "Member not found" });
+
+    const month = currentMonth();
+
+    // Upsert a missed contribution record
+    const Contribution = mongoose.models.Contribution;
+    const existing = await Contribution.findOne({
+      group: groupId,
+      member: memberId,
+      month,
+    });
+
+    if (existing) {
+      existing.status = status || "missed";
+      await existing.save();
+    } else {
+      await Contribution.create({
+        group: groupId,
+        member: memberId,
+        amount: group.amount,
+        month,
+        status: status || "missed",
+        reference: `MISSED-${memberId.toString().slice(-4)}-${Date.now()}`,
+      });
+    }
+
+    res.json({ message: `Payment flagged as ${status || "missed"} for ${member.name}` });
+  } catch (err) {
+    console.error("Flag payment error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Creates disbursement record
 router.post("/disburse", protect, async (req, res) => {
   try {
@@ -531,6 +671,160 @@ router.get("/disbursements", protect, async (req, res) => {
     console.error("Error fetching contributions:", err);
     res.status(500).json({ error: err.message });
   }
+  
 });
 
+router.post("/disburse-next", protect, async (req, res) => {
+  try {
+    const { groupId } = req.body;
+    if (!groupId) return res.status(400).json({ error: "groupId required" });
+
+    const Group = getGroup();
+    const Member = getMember();
+
+    const group = await Group.findById(groupId);
+    if (!group) return res.status(404).json({ error: "Group not found" });
+
+    // 1. Authorise – only owner or treasurer
+    const isOwner = group.owner.toString() === req.userId;
+    let isTreasurer = false;
+    if (!isOwner) {
+      const currentUser = await User.findById(req.userId).select("email");
+      const treasurerMember = await Member.findOne({
+        group: groupId,
+        role: "Treasurer",
+        status: "active",
+        $or: [
+          { userId: req.userId },
+          { contact: currentUser?.email?.toLowerCase() }
+        ]
+      });
+      isTreasurer = !!treasurerMember;
+    }
+    if (!isOwner && !isTreasurer) {
+      return res.status(403).json({ error: "Only owner or treasurer can disburse" });
+    }
+
+    // 2. FIFO order — find next eligible member who has paid and not yet disbursed
+    const members = await Member.find({ group: groupId, status: "active" }).sort("createdAt");
+    if (members.length === 0) return res.status(400).json({ error: "No active members" });
+
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    let currentIndex = group.nextPayoutIndex || 0;
+    if (currentIndex >= members.length) currentIndex = 0;
+
+    let nextMember = null;
+    let nextMemberIndex = currentIndex;
+
+    for (let i = 0; i < members.length; i++) {
+      const idx = (currentIndex + i) % members.length;
+      const candidate = members[idx];
+
+      const contribution = await Contribution.findOne({
+        group: groupId,
+        member: candidate._id,
+        month: currentMonth,
+        status: "paid"
+      });
+
+      const alreadyDisbursed = await Disbursement.findOne({
+        group: groupId,
+        member: candidate._id,
+        month: currentMonth,
+      });
+
+      if (contribution && !alreadyDisbursed) {
+        nextMember = candidate;
+        nextMemberIndex = idx;
+        break;
+      }
+    }
+
+    if (!nextMember) {
+      return res.status(400).json({
+        error: "No eligible members found. Either no one has paid yet, or all paid members have already been disbursed this month."
+      });
+    }
+
+    // 3. Calculate total collected funds for the month
+    const totalCollectedResult = await Contribution.aggregate([
+      { $match: { group: group._id, month: currentMonth, status: "paid" } },
+      { $group: { _id: null, total: { $sum: "$amount" } } }
+    ]);
+    const payoutAmount = totalCollectedResult[0]?.total || 0;
+
+    if (payoutAmount <= 0) {
+      return res.status(400).json({ error: "No funds collected this month to disburse." });
+    }
+
+    // 4. Record a PENDING disbursement
+    const reference = `PAYOUT-${groupId.toString().slice(-4)}-${Date.now()}`;
+    const disbursement = await Disbursement.create({
+      group: groupId,
+      member: nextMember._id,
+      amount: payoutAmount,
+      month: currentMonth,
+      status: "pending",
+      reference,
+      note: "Treasurer to complete bank/cash transfer and mark as paid.",
+    });
+    await disbursement.populate("member", "name initials contact");
+
+    // 5. Notify member
+    try {
+      const { sendPayoutInitiatedEmail } = require("../services/emailService");
+      await sendPayoutInitiatedEmail({
+        toEmail: nextMember.contact,
+        toName: nextMember.name,
+        amount: payoutAmount,
+        groupName: group.name,
+        reference,
+      });
+    } catch (emailErr) {
+      console.error("Payout initiation email failed:", emailErr.message);
+    }
+
+    // 6. Advance the FIFO queue
+    group.nextPayoutIndex = (nextMemberIndex + 1) % members.length;
+    await group.save();
+
+    res.json({
+      success: true,
+      disbursement,
+      member: { id: nextMember._id, name: nextMember.name },
+      amount: payoutAmount,
+      message: `Payout of R${payoutAmount} recorded for ${nextMember.name}. Treasurer must now send funds manually, then mark as paid.`
+    });
+
+  } catch (err) {
+    console.error("Disburse-next error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/payfast/disbursements/my?groupId=xxx
+router.get("/disbursements/my", protect, async (req, res) => {
+  try {
+    const { groupId } = req.query;
+    if (!groupId) return res.status(400).json({ error: "groupId required" });
+
+    const Member = getMember();
+    const currentUser = await User.findById(req.userId).select("email");
+    const member = await Member.findOne({
+      group: groupId,
+      status: "active",
+      $or: [
+        { userId: req.userId },
+        { contact: currentUser?.email?.toLowerCase() }
+      ]
+    });
+    if (!member) return res.status(404).json({ error: "You are not a member of this group" });
+
+    const myPayouts = await Disbursement.find({ group: groupId, member: member._id })
+      .sort("-paidAt");
+    res.json(myPayouts);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 module.exports = router;
