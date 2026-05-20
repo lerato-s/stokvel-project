@@ -1,6 +1,70 @@
-
 import React from "react";
 import { formatMonth, formatDateTime, currentMonth } from "../../utils/helpers";
+// ── Import PDF generation engines ───────────────────────────────────────────
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
+
+// ── Export to CSV Utility ────────────────────────────────────────────────────
+function exportToCSV(contributions, groupName = "Stokvel") {
+  const headers = ["Member Name", "Month", "Amount (ZAR)", "Reference", "Status", "Date Paid"];
+  
+  const rows = contributions.map(c => [
+    `"${c.member?.name || "—"}"`,
+    `"${formatMonth(c.month)}"`,
+    `"R${c.amount}"`,
+    `"${c.reference || "—"}"`,
+    `"${c.status}"`,
+    `"${c.paidAt ? formatDateTime(c.paidAt) : "—"}"`
+  ]);
+
+  const csvContent = "data:text/csv;charset=utf-8," 
+    + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `${(groupName || "Stokvel").replace(/\s+/g, "_")}_Contribution_Report.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+// ── Export to PDF Utility ────────────────────────────────────────────────────
+function exportToPDF(contributions, groupName = "Stokvel") {
+  const doc = new jsPDF();
+  
+  // Title & Headers
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text(`${groupName || "Stokvel"} - Payout & Contribution History`, 14, 22);
+  
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(`Generated on: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`, 14, 30);
+
+  const tableHeaders = [["Member", "Month", "Amount", "Reference", "Status", "Date"]];
+  
+  const tableRows = contributions.map(c => [
+    c.member?.name || "—",
+    formatMonth(c.month),
+    `R${c.amount}`,
+    c.reference || "—",
+    c.status.toUpperCase(),
+    c.paidAt ? formatDateTime(c.paidAt) : "—"
+  ]);
+
+  // FIX: Pass 'doc' explicitly into the standalone autoTable function
+  autoTable(doc, {
+    startY: 35,
+    head: tableHeaders,
+    body: tableRows,
+    theme: "striped",
+    headStyles: { fillColor: [59, 186, 140] }, // Matching your custom green color theme
+    styles: { fontSize: 9 },
+  });
+
+  doc.save(`${(groupName || "Stokvel").replace(/\s+/g, "_")}_Contribution_Report.pdf`);
+}
 
 // ── Admin/General Contributions ───────────────────────────────────────────────
 export function Contributions({ contributions, members, group, onPay, loading, onFlagMissing, onConfirm, onFlagMissed, currentUserEmail }) {
@@ -75,7 +139,13 @@ export function Contributions({ contributions, members, group, onPay, loading, o
       )}
       {contributions.length > 0 && (
         <div style={{ marginTop: 32 }}>
-          <h3 className="card-title">Payment History</h3>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <h3 className="card-title" style={{ margin: 0 }}>Payment History</h3>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn-secondary" style={{ padding: "6px 12px", fontSize: 13 }} onClick={() => exportToCSV(contributions, group?.name)}>💾 Export CSV</button>
+              <button className="btn-secondary" style={{ padding: "6px 12px", fontSize: 13 }} onClick={() => exportToPDF(contributions, group?.name)}>📄 Export PDF</button>
+            </div>
+          </div>
           <div className="meetings-table-wrap">
             <table className="meetings-table">
               <caption className="sr-only">Contribution history</caption>
@@ -197,7 +267,13 @@ export function TreasurerContributions({ contributions, members, group, onConfir
 
       {contributions.length > 0 && (
         <div style={{ marginTop: 32 }}>
-          <h3 className="card-title">Payment History</h3>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <h3 className="card-title" style={{ margin: 0 }}>Payment History</h3>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn-secondary" style={{ padding: "6px 12px", fontSize: 13 }} onClick={() => exportToCSV(contributions, group?.name)}>💾 Export CSV</button>
+              <button className="btn-secondary" style={{ padding: "6px 12px", fontSize: 13 }} onClick={() => exportToPDF(contributions, group?.name)}>📄 Export PDF</button>
+            </div>
+          </div>
           <div className="meetings-table-wrap">
             <table className="meetings-table">
               <caption className="sr-only">Contribution history</caption>
@@ -271,28 +347,34 @@ export function MemberContributions({ contributions, members, group, onPay, load
         </div>
       )}
 
-      <h3 className="card-title" style={{ marginBottom: 12 }}>Payment History</h3>
-      {myContributions.length === 0 ? (
-        <p className="empty-state">You haven't made any contributions yet.</p>
-      ) : (
-        <div className="meetings-table-wrap">
-          <table className="meetings-table">
-            <caption className="sr-only">My contribution history</caption>
-            <thead>
-              <tr>{["Month","Amount","Reference","Status","Date"].map((h) => <th key={h} scope="col">{h}</th>)}</tr>
-            </thead>
-            <tbody>
-              {myContributions.map((c) => (
-                <tr key={c._id}>
-                  <td>{formatMonth(c.month)}</td>
-                  <td style={{ color: "var(--green)", fontWeight: 600 }}>R{c.amount}</td>
-                  <td><code style={{ fontSize: 11, color: "var(--text-dim)" }}>{c.reference}</code></td>
-                  <td><span className={`status-badge ${c.status}`}>{c.status}</span></td>
-                  <td>{c.paidAt ? formatDateTime(c.paidAt) : "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {myContributions.length > 0 && (
+        <div style={{ marginTop: 32 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <h3 className="card-title" style={{ margin: 0 }}>Payment History</h3>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn-secondary" style={{ padding: "6px 12px", fontSize: 13 }} onClick={() => exportToCSV(myContributions, group?.name)}>💾 Export CSV</button>
+              <button className="btn-secondary" style={{ padding: "6px 12px", fontSize: 13 }} onClick={() => exportToPDF(myContributions, group?.name)}>📄 Export PDF</button>
+            </div>
+          </div>
+          <div className="meetings-table-wrap">
+            <table className="meetings-table">
+              <caption className="sr-only">My contribution history</caption>
+              <thead>
+                <tr>{["Month","Amount","Reference","Status","Date"].map((h) => <th key={h} scope="col">{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {myContributions.map((c) => (
+                  <tr key={c._id}>
+                    <td>{formatMonth(c.month)}</td>
+                    <td style={{ color: "var(--green)", fontWeight: 600 }}>R{c.amount}</td>
+                    <td><code style={{ fontSize: 11, color: "var(--text-dim)" }}>{c.reference}</code></td>
+                    <td><span className={`status-badge ${c.status}`}>{c.status}</span></td>
+                    <td>{c.paidAt ? formatDateTime(c.paidAt) : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </section>

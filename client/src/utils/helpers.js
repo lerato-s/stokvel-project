@@ -31,7 +31,11 @@ export function formatDateTime(d) {
 
 export function authHeader() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const token = user.token || user.accessToken || user.user?.token;
-  if (token) return { Authorization: `Bearer ${token}` };
+  // The token is directly on the user object from login response
+  const token = user.token;
+  
+  if (token) {
+    return { Authorization: `Bearer ${token}` };
+  }
   return {};
 }

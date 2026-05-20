@@ -1,6 +1,6 @@
 // src/pages/Group/sections/Dashboard/DashboardPages.jsx
 import React from "react";
-import { formatDate, formatMonth, formatDateTime, getInitials } from "../../utils/helpers";
+import { formatDate, formatMonth, formatDateTime, getInitials, currentMonth } from "../../utils/helpers";
 
 // ── Admin Dashboard ───────────────────────────────────────────────────────────
 export function AdminDashboard({ group, members, meetings, onBack }) {
@@ -101,8 +101,6 @@ export function TreasurerDashboard({ group, members, meetings, contributions, di
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
   const pendingDisbursements = disbursements.filter((d) => d.status === "pending");
-
-  const { currentMonth } = require("../../utils/helpers");
 
   return (
     <>
@@ -244,7 +242,7 @@ export function TreasurerDashboard({ group, members, meetings, contributions, di
   );
 }
 
-// ── Member Dashboard ──────────────────────────────────────────────────────────
+//Member Dashboard 
 export function MemberDashboard({ group, members, meetings, contributions, currentUserEmail, onBack, onNavigate }) {
   const month = currentMonth();
   const me = members.find((m) => m.contact === currentUserEmail);
@@ -256,8 +254,6 @@ export function MemberDashboard({ group, members, meetings, contributions, curre
   const nextMeeting      = upcomingMeetings[0];
   const myPosition       = me ? members.findIndex((m) => m._id === me._id) + 1 : null;
   const pool             = group.amount && members.length ? `R ${(Number(group.amount) * members.length).toLocaleString()}` : "—";
-
-  const { currentMonth } = require("../../utils/helpers");
 
   return (
     <>
@@ -377,9 +373,4 @@ export function MemberDashboard({ group, members, meetings, contributions, curre
       </div>
     </>
   );
-}
-
-function currentMonth() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }

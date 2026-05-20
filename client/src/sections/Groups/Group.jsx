@@ -62,9 +62,21 @@ export default function Group() {
   const currentUserEmail = (currentUser.email || currentUser.user?.email || "").toLowerCase();
   const currentUsername  = currentUser.username || currentUser.user?.username || "";
 
-  const [activeSection,  setActiveSection]  = useState("groups");
+
+  const [activeSection,  setActiveSection]  = useState(() => {
+    return sessionStorage.getItem("stokvel_active_section") || "groups";
+  });
+  
+  const [selectedGroup,  setSelectedGroup]  = useState(() => {
+    const savedGroup = sessionStorage.getItem("stokvel_selected_group");
+    try {
+      return savedGroup ? JSON.parse(savedGroup) : null;
+    } catch {
+      return null;
+    }
+  });
+
   const [groups,         setGroups]         = useState([]);
-  const [selectedGroup,  setSelectedGroup]  = useState(null);
   const [members,        setMembers]        = useState([]);
   const [meetings,       setMeetings]       = useState([]);
   const [loadingGroups,  setLoadingGroups]  = useState(true);
@@ -91,6 +103,19 @@ export default function Group() {
   // Current user's role in the selected group
   const myMemberRole = members.find((m) => m.contact === currentUserEmail)?.role || null;
   const navItems     = getNavItems(selectedGroup ? myMemberRole : "Member");
+
+
+  useEffect(() => {
+    sessionStorage.setItem("stokvel_active_section", activeSection);
+  }, [activeSection]);
+
+  useEffect(() => {
+    if (selectedGroup) {
+      sessionStorage.setItem("stokvel_selected_group", JSON.stringify(selectedGroup));
+    } else {
+      sessionStorage.removeItem("stokvel_selected_group");
+    }
+  }, [selectedGroup]);
 
   // ── Load groups on mount ──────────────────────────────────────────────────
   useEffect(() => {
@@ -154,6 +179,9 @@ export default function Group() {
   }
 
   function handleBack() {
+    sessionStorage.removeItem("stokvel_selected_group");
+    sessionStorage.setItem("stokvel_active_section", "groups");
+    
     setSelectedGroup(null);
     setMembers([]);
     setMeetings([]);
