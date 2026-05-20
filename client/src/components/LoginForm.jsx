@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
-import "../pages/Login.css";
+import "../styles/Login.css";
 
 
 function LoginForm({

@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import "../pages/ForgotPassword.css";
+import "../styles/ForgotPassword.css";
 
 function ForgotPasswordForm({
   handleSubmit,

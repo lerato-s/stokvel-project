@@ -1,5 +1,5 @@
 import { useState } from "react";
-import "../pages/g.css";
+import "../styles/g.css";
 
 
 

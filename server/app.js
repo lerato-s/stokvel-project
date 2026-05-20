@@ -15,6 +15,8 @@ const userRoutes = require("./routes/userRoutes");
 const groupRoutes = require("./routes/groupRoutes");
 const payfastRoutes = require("./routes/payfastRoutes");
 const memberRoutes  = require("./routes/memberRoutes");
+const rateRoutes = require("./routes/rateRoutes");
+
 //const notificationRoutes = require('./routes/notificationRoutes');
 
 
@@ -58,6 +60,8 @@ app.use("/api/users", userRoutes);
 app.use("/api", groupRoutes);
 app.use("/api/payfast", payfastRoutes);
 app.use("/api/members", memberRoutes);
+app.use("/api/rates", rateRoutes);
+
 //app.use('/api', notificationRoutes);
 
 
