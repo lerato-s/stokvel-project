@@ -242,19 +242,19 @@ export function TreasurerContributions({ contributions, members, group, onConfir
                           
                           <button
                             className="btn-pay"
-                            style={{ background: "var(--green, #3dba8c)", color: "#fff" }}
+                            style={{ background: "var(--green, #035d21)", color: "#fff" }}
                             onClick={() => onConfirm(m)}
                             disabled={loading}
                           >
-                            ✓ Confirm Payment
+                            Confirm Payment
                           </button>
                           <button
                             className="btn-flag-missed"
-                            style={{ background: "#dc2626", color: "#fff", padding: "5px 12px", borderRadius: "30px", border: "none", cursor: loading ? "not-allowed" : "pointer" }}
+                            style={{ background: "#500808", color: "#fff", padding: "5px 12px", borderRadius: "30px", border: "none", cursor: loading ? "not-allowed" : "pointer" }}
                             onClick={() => onFlagMissed(m)}
                             disabled={loading}
                           >
-                            ⚠️ Flag Missed
+                            Flag Missed
                           </button>
                         </div>
                       </div>
