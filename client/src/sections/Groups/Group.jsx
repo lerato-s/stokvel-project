@@ -181,7 +181,7 @@ export default function Group() {
   function handleBack() {
     sessionStorage.removeItem("stokvel_selected_group");
     sessionStorage.setItem("stokvel_active_section", "groups");
-    
+
     setSelectedGroup(null);
     setMembers([]);
     setMeetings([]);
@@ -627,13 +627,13 @@ export default function Group() {
             <footer className="modal-actions" style={{ flexDirection: "column", gap: 8 }}>
               <button
                 className="btn-primary"
-                style={{ width: "100%", background: "#e05c5c", justifyContent: "center" }}
+                style={{ width: "100%", background: "#7d1010", justifyContent: "center" }}
                 onClick={() => {
                   localStorage.removeItem("user");
                   window.location.href = "/login";
                 }}
               >
-                <span className="material-icons" style={{ fontSize: 18 }}>logout</span> Logout
+                <span className="material-icons" style={{ fontSize: 18 }}></span> Logout
                 
               </button>
               <button className="btn-ghost" style={{ width: "100%" }} onClick={() => setShowProfile(false)}>
