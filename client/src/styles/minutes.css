@@ -14,7 +14,7 @@
   bottom: 32px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--surface2);
+  background: var(--surface);
   border: 1px solid var(--gold);
   color: var(--gold-light);
   padding: 11px 24px;
@@ -39,11 +39,13 @@
 .minutes-form {
   display: flex;
   flex-direction: column;
+  background: white;
   gap: 14px;
 }
 
 .minutes-section {
   padding: 20px 24px;
+  background: white;
 }
 
 .minutes-section-title {
@@ -59,7 +61,7 @@
 .minutes-textarea {
   width: 100%;
   min-height: 100px;
-  background: var(--surface2);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text);
@@ -94,7 +96,7 @@
 
 .minutes-input {
   flex: 1;
-  background: var(--surface2);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text);
@@ -164,7 +166,7 @@
   justify-content: space-between;
   padding: 8px 12px;
   border-radius: 8px;
-  background: rgba(255,255,255,0.02);
+  background: rgba(250, 247, 247, 0.02);
   border: 1px solid var(--border);
   gap: 12px;
   flex-wrap: wrap;
