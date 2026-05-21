@@ -1,11 +1,11 @@
-// Handles PayFast contribution and payout routes
-const {sendContributionReceiptEmail} = require("../services/emailService");
-const User = require("../models/users")
+// routes/payfastRoutes.js - Handles PayFast contribution and payout routes
 const express = require("express");
 const mongoose = require("mongoose");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const router = express.Router();
+const { sendContributionReceiptEmail } = require("../services/emailService");
+const User = require("../models/users");
 
 // PayFast configuration
 const PAYFAST_SANDBOX = process.env.PAYFAST_SANDBOX !== "false";
@@ -13,13 +13,13 @@ const PAYFAST_HOST = PAYFAST_SANDBOX
   ? "https://sandbox.payfast.co.za"
   : "https://www.payfast.co.za";
 
-const MERCHANT_ID = process.env.PAYFAST_MERCHANT_ID || "10000100"; ;
+const MERCHANT_ID = process.env.PAYFAST_MERCHANT_ID || "10000100";
 const MERCHANT_KEY = process.env.PAYFAST_MERCHANT_KEY || "46f0cd694581a";
 const PASSPHRASE = process.env.PAYFAST_PASSPHRASE || "";
 const BACKEND_URL = process.env.AZURE_URL || "http://localhost:3001";
 const FRONTEND_URL = process.env.CLIENT_URL || "http://localhost:5173";
 
-// Verifies JWT token
+// ── Middleware ────────────────────────────────────────────────────────────
 function protect(req, res, next) {
   const header = req.headers.authorization;
 
@@ -36,90 +36,21 @@ function protect(req, res, next) {
   }
 }
 
-// Gets Group model only after it exists
+// ── Helper Functions ──────────────────────────────────────────────────────
 function getGroup() {
   return mongoose.models.Group;
 }
 
-// Gets Member model only after it exists
 function getMember() {
   return mongoose.models.Member;
 }
 
-// Helper to check if user has access to a group (owner OR active member)
-async function canAccessGroup(groupId, userId) {
-  const Group = getGroup()
-  const Member = getMember()
-
-  const group = await Group.findById(groupId)
-  if (!group) return { group: null, allowed: false }
-
-  if (group.owner.toString() === userId) return { group, allowed: true }
-
-  const User = mongoose.models.User
-  const currentUser = await User?.findById(userId).select("email")
-
-  const isMember = await Member.findOne({
-    group: groupId,
-    status: "active",
-    $or: [
-      { userId: userId },
-      ...(currentUser?.email ? [{ contact: currentUser.email.toLowerCase() }] : [])
-    ]
-  })
-
-  return { group, allowed: !!isMember }
+function currentMonth() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
-// Contribution model
-const contributionSchema = new mongoose.Schema(
-  {
-    group: { type: mongoose.Schema.Types.ObjectId, ref: "Group", required: true },
-    member: { type: mongoose.Schema.Types.ObjectId, ref: "Member", required: true },
-    amount: { type: Number, required: true },
-    month: { type: String, required: true },
-    status: {
-      type: String,
-      enum: ["pending", "paid", "failed"],
-      default: "pending",
-    },
-    pfPaymentId: { type: String },
-    reference: { type: String },
-    paidAt: { type: Date },
-  },
-  { timestamps: true }
-);
-
-const Contribution =
-  mongoose.models.Contribution ||
-  mongoose.model("Contribution", contributionSchema);
-
-// Disbursement model
-const disbursementSchema = new mongoose.Schema(
-  {
-    group: { type: mongoose.Schema.Types.ObjectId, ref: "Group", required: true },
-    member: { type: mongoose.Schema.Types.ObjectId, ref: "Member", required: true },
-    amount: { type: Number, required: true },
-    month: { type: String, required: true },
-    status: {
-      type: String,
-      enum: ["pending", "paid", "failed"],
-      default: "pending",
-    },
-    reference: { type: String },
-    note: { type: String },
-    paidAt: { type: Date },
-  },
-  { timestamps: true }
-);
-
-const Disbursement =
-  mongoose.models.Disbursement ||
-  mongoose.model("Disbursement", disbursementSchema);
-
-// Creates PayFast signature from payment data
 function generateSignature(data, passphrase = "") {
-  
   const filtered = Object.fromEntries(
     Object.entries(data).filter(([key]) => key !== "signature")
   );
@@ -142,15 +73,57 @@ function generateSignature(data, passphrase = "") {
   return crypto.createHash("md5").update(str).digest("hex");
 }
 
-// Returns current month as YYYY-MM
-function currentMonth() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-}
+// ── Models ────────────────────────────────────────────────────────────────
+const contributionSchema = new mongoose.Schema(
+  {
+    group: { type: mongoose.Schema.Types.ObjectId, ref: "Group", required: true },
+    member: { type: mongoose.Schema.Types.ObjectId, ref: "Member", required: true },
+    amount: { type: Number, required: true },
+    month: { type: String, required: true },
+    status: {
+      type: String,
+      enum: ["pending", "paid", "failed"],
+      default: "pending",
+    },
+    pfPaymentId: { type: String },
+    reference: { type: String },
+    paidAt: { type: Date },
+  },
+  { timestamps: true }
+);
 
-// Start a contribution payment
+const Contribution =
+  mongoose.models.Contribution ||
+  mongoose.model("Contribution", contributionSchema);
+
+const disbursementSchema = new mongoose.Schema(
+  {
+    group: { type: mongoose.Schema.Types.ObjectId, ref: "Group", required: true },
+    member: { type: mongoose.Schema.Types.ObjectId, ref: "Member", required: true },
+    amount: { type: Number, required: true },
+    month: { type: String, required: true },
+    status: {
+      type: String,
+      enum: ["pending", "paid", "failed"],
+      default: "pending",
+    },
+    reference: { type: String },
+    note: { type: String },
+    paidAt: { type: Date },
+  },
+  { timestamps: true }
+);
+
+const Disbursement =
+  mongoose.models.Disbursement ||
+  mongoose.model("Disbursement", disbursementSchema);
+
+// ══════════════════════════════════════════════════════════════════════════
+// CONTRIBUTION ROUTES
+// ══════════════════════════════════════════════════════════════════════════
+
+// POST /api/payfast/contribute - Start a contribution payment
 router.post("/contribute", protect, async (req, res) => {
-  
   try {
     const { groupId, memberId } = req.body;
 
@@ -158,14 +131,13 @@ router.post("/contribute", protect, async (req, res) => {
       return res.status(400).json({ error: "groupId and memberId required" });
     }
 
-    const Group = mongoose.models.Group
-    const Member = mongoose.models.Member
+    const Group = getGroup();
+    const Member = getMember();
+
+    if (!Group) return res.status(500).json({ error: "Group model not loaded" });
+    if (!Member) return res.status(500).json({ error: "Member model not loaded" });
 
     const group = await Group.findById(groupId.toString());
-    
-    if (!Group) return res.status(500).json({ error: "Group model not loaded" })
-    if (!Member) return res.status(500).json({ error: "Member model not loaded" })
-    
     if (!group) {
       return res.status(404).json({ error: "Group not found" });
     }
@@ -174,27 +146,24 @@ router.post("/contribute", protect, async (req, res) => {
       return res.status(400).json({ error: "Group contribution amount not set" });
     }
 
-    const isOwner = group.owner.toString() === req.userId
-    
-    const User = mongoose.models.User || require("../models/users")
-
-    const currentUser = await User.findById(req.userId).select("email")
+    const isOwner = group.owner.toString() === req.userId;
+    const currentUser = await User.findById(req.userId).select("email");
 
     const myMember = await Member.findOne({
       group: groupId,
       status: "active",
       $or: [
         { userId: req.userId },
-        { contact: currentUser?.email?.toLowerCase() }
-      ]
-    })
-    
+        { contact: currentUser?.email?.toLowerCase() },
+      ],
+    });
 
-    if (!isOwner) {
-      if (!myMember)
-        return res.status(403).json({ error: "You are not a member of this group" })
-      if (myMember._id.toString() !== memberId)
-        return res.status(403).json({ error: "You can only make payments for yourself" })
+    if (!isOwner && !myMember) {
+      return res.status(403).json({ error: "You are not a member of this group" });
+    }
+
+    if (!isOwner && myMember._id.toString() !== memberId) {
+      return res.status(403).json({ error: "You can only make payments for yourself" });
     }
 
     const member = await Member.findOne({ _id: memberId, group: groupId });
@@ -242,9 +211,7 @@ router.post("/contribute", protect, async (req, res) => {
       notify_url: `${BACKEND_URL}/api/payfast/itn`,
       name_first: member.name.split(" ")[0],
       name_last: member.name.split(" ").slice(1).join(" ") || "Member",
-      email_address: PAYFAST_SANDBOX
-        ? "sbtu01@payfast.io"
-        : member.contact,
+      email_address: PAYFAST_SANDBOX ? "sbtu01@payfast.io" : member.contact,
       m_payment_id: reference,
       amount: Number(group.amount).toFixed(2),
       item_name: "Stokvel Contribution",
@@ -253,7 +220,7 @@ router.post("/contribute", protect, async (req, res) => {
     paymentData.signature = generateSignature(paymentData, PASSPHRASE);
 
     const params = Object.keys(paymentData)
-      .map(key => `${key}=${encodeURIComponent(String(paymentData[key]).trim()).replace(/%20/g, "+")}`)
+      .map((key) => `${key}=${encodeURIComponent(String(paymentData[key]).trim()).replace(/%20/g, "+")}`)
       .join("&");
 
     const paymentUrl = `${PAYFAST_HOST}/eng/process?${params}`;
@@ -269,36 +236,29 @@ router.post("/contribute", protect, async (req, res) => {
   }
 });
 
-// PayFast ITN callback
+// POST /api/payfast/itn - PayFast ITN callback
 router.post("/itn", express.urlencoded({ extended: false }), async (req, res) => {
   try {
     const data = req.body;
-    console.log("Raw body:", data)
+    console.log("Raw body:", data);
 
     const received = data.signature;
     const toVerify = { ...data };
     delete toVerify.signature;
     const expected = generateSignature(toVerify, PASSPHRASE);
-    console.log("Received signature:", received)
-    console.log("Expected signature:", expected)
+    console.log("Received signature:", received);
+    console.log("Expected signature:", expected);
 
     if (received !== expected) {
-       console.error(
-        "PayFast ITN: invalid signature. Expected:",
-        expected,
-        "Got:",
-        received
-      );
-      console.error("Invalid signature")
+      console.error("PayFast ITN: invalid signature. Expected:", expected, "Got:", received);
       return res.status(400).send("Invalid signature");
-    } 
+    }
 
     if (data.payment_status !== "COMPLETE") {
       await Contribution.findOneAndUpdate(
         { reference: data.m_payment_id },
         { status: "failed" }
       );
-
       return res.status(200).send("OK");
     }
 
@@ -318,21 +278,21 @@ router.post("/itn", express.urlencoded({ extended: false }), async (req, res) =>
     }
 
     try {
-      const Member = getMember()
-      const Group = getGroup()
-      const member = await Member.findById(contribution.member)
-      const group = await Group.findById(contribution.group)
+      const Member = getMember();
+      const Group = getGroup();
+      const member = await Member.findById(contribution.member);
+      const group = await Group.findById(contribution.group);
 
       await sendContributionReceiptEmail({
-        toEmail:   member.contact,
-        toName:    member.name,
+        toEmail: member.contact,
+        toName: member.name,
         groupName: group.name,
-        amount:    data.amount_gross,
+        amount: data.amount_gross,
         reference: data.m_payment_id,
-        date:      new Date().toLocaleDateString("en-ZA"),
-      })
+        date: new Date().toLocaleDateString("en-ZA"),
+      });
     } catch (emailErr) {
-      console.error("Receipt email failed:", emailErr.message)
+      console.error("Receipt email failed:", emailErr.message);
     }
 
     console.log(`Contribution paid: ${data.m_payment_id} — R${data.amount_gross}`);
@@ -343,30 +303,27 @@ router.post("/itn", express.urlencoded({ extended: false }), async (req, res) =>
   }
 });
 
-
-
-// Get contributions for a group
+// GET /api/payfast/contributions - Get contributions for a group
 router.get("/contributions", protect, async (req, res) => {
   try {
     const { groupId } = req.query;
     if (!groupId) return res.status(400).json({ error: "groupId required" });
 
-    const Group  = getGroup();
+    const Group = getGroup();
     const Member = getMember();
-    //const User = mongoose.models.User || mongoose.model("user");
 
     const group = await Group.findById(groupId);
     if (!group) return res.status(404).json({ error: "Group not found" });
 
     const isOwner = group.owner.toString() === req.userId;
     if (!isOwner) {
-      const currentUser = await User.findById(req.userId).select("email")
+      const currentUser = await User.findById(req.userId).select("email");
       const isMember = await Member.findOne({
         group: groupId,
         status: "active",
         $or: [
           { userId: req.userId },
-          { contact: currentUser?.email?.toLowerCase() }
+          { contact: currentUser?.email?.toLowerCase() },
         ],
       });
       if (!isMember) return res.status(403).json({ error: "Access denied" });
@@ -383,7 +340,7 @@ router.get("/contributions", protect, async (req, res) => {
   }
 });
 
-// Treasurer manually confirms an offline payment
+// POST /api/payfast/confirm - Treasurer manually confirms an offline payment
 router.post("/confirm", protect, async (req, res) => {
   try {
     const { groupId, memberId, month } = req.body;
@@ -408,8 +365,8 @@ router.post("/confirm", protect, async (req, res) => {
         status: "active",
         $or: [
           { userId: req.userId },
-          { contact: currentUser?.email?.toLowerCase() }
-        ]
+          { contact: currentUser?.email?.toLowerCase() },
+        ],
       });
       isTreasurer = !!treasurerMember;
     }
@@ -454,75 +411,11 @@ router.post("/confirm", protect, async (req, res) => {
   }
 });
 
-// Flag a member's payment as missed
-router.post("/:groupId/flag-payment", protect, async (req, res) => {
-  try {
-    const { groupId } = req.params;
-    const { memberId, status } = req.body;
+// ══════════════════════════════════════════════════════════════════════════
+// DISBURSEMENT ROUTES
+// ══════════════════════════════════════════════════════════════════════════
 
-    if (!memberId) return res.status(400).json({ error: "memberId required" });
-
-    const Group = mongoose.models.Group;
-    const Member = mongoose.models.Member;
-
-    const group = await Group.findById(groupId);
-    if (!group) return res.status(404).json({ error: "Group not found" });
-
-    // Allow owner or treasurer
-    const isOwner = group.owner.toString() === req.userId;
-    let isTreasurer = false;
-    if (!isOwner) {
-      const currentUser = await User.findById(req.userId).select("email");
-      const treasurerMember = await Member.findOne({
-        group: groupId,
-        role: "Treasurer",
-        status: "active",
-        $or: [
-          { userId: req.userId },
-          { contact: currentUser?.email?.toLowerCase() }
-        ]
-      });
-      isTreasurer = !!treasurerMember;
-    }
-    if (!isOwner && !isTreasurer) {
-      return res.status(403).json({ error: "Only owner or treasurer can flag payments" });
-    }
-
-    const member = await Member.findOne({ _id: memberId, group: groupId });
-    if (!member) return res.status(404).json({ error: "Member not found" });
-
-    const month = currentMonth();
-
-    // Upsert a missed contribution record
-    const Contribution = mongoose.models.Contribution;
-    const existing = await Contribution.findOne({
-      group: groupId,
-      member: memberId,
-      month,
-    });
-
-    if (existing) {
-      existing.status = status || "missed";
-      await existing.save();
-    } else {
-      await Contribution.create({
-        group: groupId,
-        member: memberId,
-        amount: group.amount,
-        month,
-        status: status || "missed",
-        reference: `MISSED-${memberId.toString().slice(-4)}-${Date.now()}`,
-      });
-    }
-
-    res.json({ message: `Payment flagged as ${status || "missed"} for ${member.name}` });
-  } catch (err) {
-    console.error("Flag payment error:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Creates disbursement record
+// POST /api/payfast/disburse - Creates disbursement record
 router.post("/disburse", protect, async (req, res) => {
   try {
     const { groupId, memberId, note } = req.body;
@@ -533,7 +426,6 @@ router.post("/disburse", protect, async (req, res) => {
 
     const Group = getGroup();
     const Member = getMember();
-    
 
     const group = await Group.findOne({ _id: groupId, owner: req.userId });
     if (!group) {
@@ -600,80 +492,7 @@ router.post("/disburse", protect, async (req, res) => {
   }
 });
 
-
-
-// Mark disbursement as paid
-router.patch("/disburse/:id", protect, async (req, res) => {
-  try {
-    const updated = await Disbursement.findOneAndUpdate(
-      { _id: req.params.id },
-      { status: "paid", paidAt: new Date() },
-      { new: true }
-    ).populate({
-      path: "group",
-      select: "owner",
-    });
-
-    
-    if (!updated || !updated.group) {
-      return res.status(404).json({ error: "Not found" });
-    }
-
-    const ownerId = updated.group.owner;
-
-    if (!ownerId || ownerId.toString() !== req.userId) {
-      return res.status(404).json({ error: "Not found" });
-    }
-
-    return res.status(200).json(updated);
-
-  } catch (err) {
-    console.error("PATCH disbursement error:", err);
-    return res.status(500).json({ error: "Server error" });
-  }
-});
-
-
-// Get disbursements for a group
-router.get("/disbursements", protect, async (req, res) => {
-  try {
-    const { groupId } = req.query;
-    if (!groupId) return res.status(400).json({ error: "groupId required" });
-
-    const Group  = getGroup();
-    const Member = getMember();
-    //const User = mongoose.models.User || mongoose.model("user");
-
-    
-    const group = await Group.findById(groupId);
-    if (!group) return res.status(404).json({ error: "Group not found" });
-
-    const isOwner = group.owner.toString() === req.userId;
-    if (!isOwner) {
-      const currentUser = await User.findById(req.userId).select("email")
-      const isMember = await Member.findOne({
-        group: groupId,
-        status: "active",
-        $or: [
-          { userId: req.userId },
-          { contact: currentUser?.email?.toLowerCase() }
-        ],
-      });
-      if (!isMember) return res.status(403).json({ error: "Access denied" });
-    }
-
-    const disbursements = await Disbursement.find({ group: groupId })
-      .populate("member", "name initials")
-      .sort("-createdAt");
-
-    res.json(disbursements);
-  } catch (err) {
-    console.error("Error fetching contributions:", err);
-    res.status(500).json({ error: err.message });
-  }
-  
-});
-
+// POST /api/payfast/disburse-next - FIFO disbursement
 router.post("/disburse-next", protect, async (req, res) => {
   try {
     const { groupId } = req.body;
@@ -685,7 +504,7 @@ router.post("/disburse-next", protect, async (req, res) => {
     const group = await Group.findById(groupId);
     if (!group) return res.status(404).json({ error: "Group not found" });
 
-    // 1. Authorise – only owner or treasurer
+    // 1. Authorize — only owner or treasurer
     const isOwner = group.owner.toString() === req.userId;
     let isTreasurer = false;
     if (!isOwner) {
@@ -696,8 +515,8 @@ router.post("/disburse-next", protect, async (req, res) => {
         status: "active",
         $or: [
           { userId: req.userId },
-          { contact: currentUser?.email?.toLowerCase() }
-        ]
+          { contact: currentUser?.email?.toLowerCase() },
+        ],
       });
       isTreasurer = !!treasurerMember;
     }
@@ -709,7 +528,7 @@ router.post("/disburse-next", protect, async (req, res) => {
     const members = await Member.find({ group: groupId, status: "active" }).sort("createdAt");
     if (members.length === 0) return res.status(400).json({ error: "No active members" });
 
-    const currentMonth = new Date().toISOString().slice(0, 7);
+    const currentMonthStr = new Date().toISOString().slice(0, 7);
     let currentIndex = group.nextPayoutIndex || 0;
     if (currentIndex >= members.length) currentIndex = 0;
 
@@ -723,14 +542,14 @@ router.post("/disburse-next", protect, async (req, res) => {
       const contribution = await Contribution.findOne({
         group: groupId,
         member: candidate._id,
-        month: currentMonth,
-        status: "paid"
+        month: currentMonthStr,
+        status: "paid",
       });
 
       const alreadyDisbursed = await Disbursement.findOne({
         group: groupId,
         member: candidate._id,
-        month: currentMonth,
+        month: currentMonthStr,
       });
 
       if (contribution && !alreadyDisbursed) {
@@ -742,14 +561,14 @@ router.post("/disburse-next", protect, async (req, res) => {
 
     if (!nextMember) {
       return res.status(400).json({
-        error: "No eligible members found. Either no one has paid yet, or all paid members have already been disbursed this month."
+        error: "No eligible members found. Either no one has paid yet, or all paid members have already been disbursed this month.",
       });
     }
 
     // 3. Calculate total collected funds for the month
     const totalCollectedResult = await Contribution.aggregate([
-      { $match: { group: group._id, month: currentMonth, status: "paid" } },
-      { $group: { _id: null, total: { $sum: "$amount" } } }
+      { $match: { group: group._id, month: currentMonthStr, status: "paid" } },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
     const payoutAmount = totalCollectedResult[0]?.total || 0;
 
@@ -763,28 +582,14 @@ router.post("/disburse-next", protect, async (req, res) => {
       group: groupId,
       member: nextMember._id,
       amount: payoutAmount,
-      month: currentMonth,
+      month: currentMonthStr,
       status: "pending",
       reference,
       note: "Treasurer to complete bank/cash transfer and mark as paid.",
     });
     await disbursement.populate("member", "name initials contact");
 
-    // 5. Notify member
-    try {
-      const { sendPayoutInitiatedEmail } = require("../services/emailService");
-      await sendPayoutInitiatedEmail({
-        toEmail: nextMember.contact,
-        toName: nextMember.name,
-        amount: payoutAmount,
-        groupName: group.name,
-        reference,
-      });
-    } catch (emailErr) {
-      console.error("Payout initiation email failed:", emailErr.message);
-    }
-
-    // 6. Advance the FIFO queue
+    // 5. Advance the FIFO queue
     group.nextPayoutIndex = (nextMemberIndex + 1) % members.length;
     await group.save();
 
@@ -793,16 +598,91 @@ router.post("/disburse-next", protect, async (req, res) => {
       disbursement,
       member: { id: nextMember._id, name: nextMember.name },
       amount: payoutAmount,
-      message: `Payout of R${payoutAmount} recorded for ${nextMember.name}. Treasurer must now send funds manually, then mark as paid.`
+      message: `Payout of R${payoutAmount} recorded for ${nextMember.name}. Treasurer must now send funds manually, then mark as paid.`,
     });
-
   } catch (err) {
     console.error("Disburse-next error:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET /api/payfast/disbursements/my?groupId=xxx
+// PATCH /api/payfast/disburse/:disbursementId - Mark disbursement as paid
+router.patch("/disburse/:disbursementId", protect, async (req, res) => {
+  try {
+    console.log("PATCH disburse called with ID:", req.params.disbursementId);
+    
+    const updated = await Disbursement.findByIdAndUpdate(
+      req.params.disbursementId,
+      { status: "paid", paidAt: new Date() },
+      { new: true }
+    ).populate({
+      path: "group",
+      select: "owner",
+    });
+
+    if (!updated) {
+      console.error("Disbursement not found:", req.params.disbursementId);
+      return res.status(404).json({ error: "Disbursement not found" });
+    }
+
+    if (!updated.group) {
+      console.error("Group not found for disbursement:", updated._id);
+      return res.status(404).json({ error: "Group not found" });
+    }
+
+    const ownerId = updated.group.owner;
+
+    if (!ownerId || ownerId.toString() !== req.userId) {
+      console.error("User not authorized. Owner:", ownerId, "User:", req.userId);
+      return res.status(403).json({ error: "Not authorized" });
+    }
+
+    console.log("Successfully marked disbursement as paid:", updated._id);
+    return res.status(200).json(updated);
+  } catch (err) {
+    console.error("PATCH disbursement error:", err);
+    return res.status(500).json({ error: "Server error: " + err.message });
+  }
+});
+
+// GET /api/payfast/disbursements - Get disbursements for a group
+router.get("/disbursements", protect, async (req, res) => {
+  try {
+    const { groupId } = req.query;
+    if (!groupId) return res.status(400).json({ error: "groupId required" });
+
+    const Group = getGroup();
+    const Member = getMember();
+
+    const group = await Group.findById(groupId);
+    if (!group) return res.status(404).json({ error: "Group not found" });
+
+    const isOwner = group.owner.toString() === req.userId;
+    if (!isOwner) {
+      const currentUser = await User.findById(req.userId).select("email");
+      const isMember = await Member.findOne({
+        group: groupId,
+        status: "active",
+        $or: [
+          { userId: req.userId },
+          { contact: currentUser?.email?.toLowerCase() },
+        ],
+      });
+      if (!isMember) return res.status(403).json({ error: "Access denied" });
+    }
+
+    const disbursements = await Disbursement.find({ group: groupId })
+      .populate("member", "name initials")
+      .sort("-createdAt");
+
+    res.json(disbursements);
+  } catch (err) {
+    console.error("Error fetching disbursements:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/payfast/disbursements/my - Get member's own payouts
 router.get("/disbursements/my", protect, async (req, res) => {
   try {
     const { groupId } = req.query;
@@ -815,16 +695,87 @@ router.get("/disbursements/my", protect, async (req, res) => {
       status: "active",
       $or: [
         { userId: req.userId },
-        { contact: currentUser?.email?.toLowerCase() }
-      ]
+        { contact: currentUser?.email?.toLowerCase() },
+      ],
     });
     if (!member) return res.status(404).json({ error: "You are not a member of this group" });
 
-    const myPayouts = await Disbursement.find({ group: groupId, member: member._id })
-      .sort("-paidAt");
+    const myPayouts = await Disbursement.find({ group: groupId, member: member._id }).sort("-paidAt");
     res.json(myPayouts);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
+// ══════════════════════════════════════════════════════════════════════════
+// FLAG PAYMENT ROUTES
+// ══════════════════════════════════════════════════════════════════════════
+
+// POST /api/payfast/flag-payment/:groupId - Flag a member's payment as missed
+router.post("/flag-payment/:groupId", protect, async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const { memberId, status } = req.body;
+
+    if (!memberId) return res.status(400).json({ error: "memberId required" });
+
+    const Group = mongoose.models.Group;
+    const Member = mongoose.models.Member;
+
+    const group = await Group.findById(groupId);
+    if (!group) return res.status(404).json({ error: "Group not found" });
+
+    // Allow owner or treasurer
+    const isOwner = group.owner.toString() === req.userId;
+    let isTreasurer = false;
+    if (!isOwner) {
+      const currentUser = await User.findById(req.userId).select("email");
+      const treasurerMember = await Member.findOne({
+        group: groupId,
+        role: "Treasurer",
+        status: "active",
+        $or: [
+          { userId: req.userId },
+          { contact: currentUser?.email?.toLowerCase() },
+        ],
+      });
+      isTreasurer = !!treasurerMember;
+    }
+    if (!isOwner && !isTreasurer) {
+      return res.status(403).json({ error: "Only owner or treasurer can flag payments" });
+    }
+
+    const member = await Member.findOne({ _id: memberId, group: groupId });
+    if (!member) return res.status(404).json({ error: "Member not found" });
+
+    const month = currentMonth();
+
+    // Upsert a missed contribution record
+    const existing = await Contribution.findOne({
+      group: groupId,
+      member: memberId,
+      month,
+    });
+
+    if (existing) {
+      existing.status = status || "missed";
+      await existing.save();
+    } else {
+      await Contribution.create({
+        group: groupId,
+        member: memberId,
+        amount: group.amount,
+        month,
+        status: status || "missed",
+        reference: `MISSED-${memberId.toString().slice(-4)}-${Date.now()}`,
+      });
+    }
+
+    res.json({ message: `Payment flagged as ${status || "missed"} for ${member.name}` });
+  } catch (err) {
+    console.error("Flag payment error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
