@@ -1,13 +1,13 @@
 /* === CSS VARIABLES === */
 :root {
-  --bg: #0e0c14;
-  --surface: #131929;
+  --bg: #131929;
+  --surface: #1a2238;
   --surface2: #1a2238;
   --border: #252d45;
   --gold: #9b7fd4;
   --gold-light: #c4a8f0;
-  --green: #4caf7d;
-  --red: #e05c5c;
+  --green: #218b34;
+  --red: #7b1111;
   --yellow: #e0b54c;
   --blue: #5c9be0;
   --text: #f0eeff;
@@ -15,7 +15,7 @@
   --text-dim: #3e3e5e;
   --radius: 12px;
   --radius-lg: 18px;
-  --font-display: 'Playfair Display', serif;
+  --font-display: 'Poppins', sans-serif;
   --font-body: 'DM Sans', sans-serif;
 }
 
@@ -255,7 +255,7 @@ html, body {
 
 .groups-list-header h2 {
   font-family: var(--font-display);
-  font-size: 26px;
+  font-size: 30px;
   font-weight: 700;
 }
 
@@ -956,7 +956,9 @@ textarea { resize: vertical; }
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-width: 760px;
+  /* i want the list to shrink to fit the content but not exceed the container width */
+  width: 100%;
+
 }
 
 .contribution-row {
@@ -1139,7 +1141,7 @@ textarea { resize: vertical; }
 
 /* Payout method badge in roster header */
 .payout-method-badge {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   padding: 4px 12px;
   border-radius: 20px;
