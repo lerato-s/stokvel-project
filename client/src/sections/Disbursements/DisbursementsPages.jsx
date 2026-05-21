@@ -52,7 +52,7 @@ export function Disbursements({ disbursements, members, group, contributions, on
 
       {/* ── FIFO next-up card ── */}
       <div className="card" style={{ marginBottom: 24, padding: "20px 24px" }}>
-        <h3 style={{ margin: "0 0 12px", fontSize: 15 }}>Next in FIFO Queue</h3>
+        <h3 style={{ margin: "0 0 12px", fontSize: 15,color: "var(--text)" }}>Next in FIFO Queue</h3>
         {nextMember ? (
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
@@ -79,12 +79,12 @@ export function Disbursements({ disbursements, members, group, contributions, on
 
             {totalCollected === 0 && (
               <p style={{ fontSize: 12, color: "#e05c5c", marginTop: 8 }}>
-                ⚠️ No funds collected this month yet.
+                No funds collected this month yet.
               </p>
             )}
           </>
         ) : (
-          <p style={{ color: "var(--green)", fontSize: 14 }}>
+          <p style={{ color: "var(--green)", fontSize: 16 }}>
             ✓ All members have been paid this month!
           </p>
         )}
@@ -110,41 +110,6 @@ export function Disbursements({ disbursements, members, group, contributions, on
                     <span>{m.role}</span>
                   </div>
 
-                  {disbursed ? (
-                    <div className="contrib-paid-info">
-                      <span className={`status-badge ${record.status === "paid" ? "active" : "pending"}`}>
-                        {record.status === "paid" ? "✓ Paid" : "Pending"}
-                      </span>
-                      <span className="contrib-ref">R{record.amount?.toLocaleString()}</span>
-                      {record.paidAt && (
-                        <span className="contrib-date">{formatDateTime(record.paidAt)}</span>
-                      )}
-                      {record.status === "pending" && onMarkPaid && (
-                        <button
-                          className="btn-secondary"
-                          style={{ fontSize: 12, padding: "5px 12px" }}
-                          onClick={() => onMarkPaid(record._id)}
-                          disabled={loading}
-                        >
-                          Mark Paid
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="contrib-actions">
-                      <span className="status-badge pending">No Payout</span>
-                      {onDisburse && (
-                        <button
-                          className="btn-pay"
-                          onClick={() => onDisburse(m)}
-                          disabled={loading || totalCollected === 0}
-                          style={{ fontSize: 13 }}
-                        >
-                          Initiate Payout
-                        </button>
-                      )}
-                    </div>
-                  )}
                 </li>
               );
             })}
